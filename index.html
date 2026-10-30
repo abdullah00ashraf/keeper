@@ -1,0 +1,3187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Northbound &amp; Innu's Sanctuary — Interactive 3D Realms for Inaya Khan</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --champagne: #f5e6d3;
+      --maroon: #6b1d2f;
+      --lavender: #d8b4fe;
+      --turquoise: #2dd4bf;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #04141c;
+      font-family: 'Inter', sans-serif;
+      color: #f8fafc;
+    }
+    .serif-editorial {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+    }
+    #webgl-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+    .glass-panel {
+      background: rgba(10, 22, 32, 0.64);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border: 1px solid rgba(245, 230, 211, 0.2);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    .glass-pill {
+      background: rgba(12, 25, 36, 0.74);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(245, 230, 211, 0.2);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-pill:hover {
+      background: rgba(28, 48, 66, 0.88);
+      border-color: rgba(245, 230, 211, 0.48);
+      transform: translateY(-1px);
+    }
+    .glass-pill.active-btn {
+      background: linear-gradient(135deg, rgba(107, 29, 47, 0.9), rgba(45, 212, 191, 0.38));
+      border-color: rgba(245, 230, 211, 0.72);
+      box-shadow: 0 0 18px rgba(245, 230, 211, 0.25);
+    }
+    .koi-card {
+      background: rgba(11, 27, 38, 0.7);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(245, 230, 211, 0.2);
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: grab;
+    }
+    .koi-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      border-color: rgba(245, 230, 211, 0.58);
+      background: rgba(17, 40, 56, 0.85);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42), 0 0 16px rgba(45, 212, 191, 0.24);
+    }
+    .koi-card:active {
+      cursor: grabbing;
+      transform: scale(0.98);
+    }
+    #drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      display: none;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,0.6));
+    }
+    .ui-transition {
+      transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .ui-hidden {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateY(12px);
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(245, 230, 211, 0.3); border-radius: 9999px; }
+  </style>
+</head>
+<body>
+
+  <!-- FULLSCREEN WEBGL CANVAS -->
+  <div id="webgl-container" aria-label="Interactive 3D WebGL Experience"></div>
+
+  <!-- DRAG GHOST FOR KOI DROP -->
+  <div id="drag-ghost" class="px-3.5 py-2 rounded-2xl glass-panel flex items-center gap-2.5 border border-teal-300/60">
+    <span id="drag-ghost-swatch" class="w-4 h-4 rounded-full inline-block ring-2 ring-white/50"></span>
+    <div class="text-xs font-medium text-amber-50">
+      <div id="drag-ghost-name">Kohaku</div>
+      <div class="text-[10px] text-teal-200/90">Release over pond to drop</div>
+    </div>
+  </div>
+
+  <!-- TOP EDITORIAL BAR & REALM SWITCHER -->
+  <header id="top-ui" class="fixed top-0 left-0 right-0 z-30 p-3 sm:p-5 flex flex-wrap items-center justify-between gap-2 pointer-events-none ui-transition">
+    
+    <!-- Brand & Editorial Chapter Title -->
+    <div class="pointer-events-auto flex items-center gap-3 glass-panel px-4 py-2 rounded-2xl">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 id="editorial-title" class="serif-editorial text-2xl sm:text-3xl font-semibold tracking-wide text-amber-50 leading-none">
+            Northbound.
+          </h1>
+          <span class="text-[10px] uppercase tracking-[0.18em] px-2 py-0.5 rounded-full bg-rose-950/85 border border-amber-200/35 text-amber-100">
+            For Inaya · نور چشم
+          </span>
+        </div>
+        <p id="editorial-subtitle" class="text-[11px] sm:text-xs text-teal-100/80 tracking-wider mt-0.5">
+          Chapter I · The Sanctuary Cove of Innu &amp; Drakkar Malkin
+        </p>
+      </div>
+    </div>
+
+    <!-- Center Realm Switcher (Both Complete 3D Worlds) -->
+    <nav aria-label="Experience Switcher" class="pointer-events-auto flex items-center gap-1.5 glass-panel p-1.5 rounded-2xl">
+      <button id="tab-koi" type="button" class="glass-pill px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-1.5 text-amber-50">
+        <span>🪷</span>
+        <span>Innu's Koi Pond</span>
+      </button>
+      <button id="tab-northbound" type="button" class="glass-pill active-btn px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-1.5 text-amber-50">
+        <span>⛵</span>
+        <span>Northbound Fjord</span>
+      </button>
+      <button id="btn-inaya-tribute" type="button" class="glass-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-1.5 text-pink-200 border-pink-300/30" title="Open Inaya's Sanctuary Letter & Peace Meter">
+        <span>🦋</span>
+        <span class="hidden md:inline">Rooh Barooh</span>
+      </button>
+    </nav>
+
+    <!-- Right Global Actions (Sound, Fullscreen, Hide Interface) -->
+    <div class="pointer-events-auto flex items-center gap-1.5">
+      <button id="btn-sound" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 text-amber-50" aria-pressed="false">
+        <span id="sound-icon">🔇</span>
+        <span id="sound-label">Sound</span>
+      </button>
+      <button id="btn-fullscreen" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-amber-50 hidden sm:flex items-center gap-1" title="Toggle Fullscreen">
+        <span>⛶</span>
+        <span class="hidden lg:inline">Fullscreen</span>
+      </button>
+      <button id="btn-hide-ui" type="button" class="glass-pill px-3 py-2 rounded-xl text-xs font-medium text-amber-50 flex items-center gap-1" title="Hide interface for screen recording (H)">
+        <span>🎥</span>
+        <span>Hide UI</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- FLOATING RESTORE UI BUTTON (SHOWN ONLY WHEN UI IS HIDDEN FOR SCREEN RECORDING) -->
+  <button id="btn-restore-ui" type="button" class="fixed bottom-4 right-4 z-50 glass-pill px-3.5 py-2 rounded-full text-xs font-medium text-amber-100/90 opacity-0 pointer-events-none transition-opacity duration-300 flex items-center gap-1.5 shadow-lg">
+    <span>✨</span>
+    <span>Show Interface</span>
+  </button>
+
+  <!-- ===================================================================== -->
+  <!-- REALM 1 CONTROLS: INTERACTIVE KOI POND ("INNU'S SANCTUARY")           -->
+  <!-- ===================================================================== -->
+  <section id="koi-ui" class="fixed inset-x-0 bottom-0 z-20 p-3 sm:p-5 pointer-events-none flex flex-col items-center gap-2.5 ui-transition hidden">
+    
+    <!-- Pond Environment & Weather Bar -->
+    <div class="pointer-events-auto glass-panel px-3 py-2 rounded-2xl flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 max-w-full">
+      <span class="text-[11px] uppercase tracking-wider text-teal-200/80 px-2 hidden sm:inline">
+        Sanctuary Pond · <span id="koi-count-badge" class="text-amber-200 font-semibold">16 Koi</span>
+      </span>
+      <button id="btn-koi-rain" type="button" class="glass-pill px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5">
+        <span>🌧️</span>
+        <span>Rain</span>
+      </button>
+      <button id="btn-koi-whirlpool" type="button" class="glass-pill px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5">
+        <span>🌀</span>
+        <span>Whirlpool</span>
+      </button>
+      <button id="btn-koi-calm" type="button" class="glass-pill px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5">
+        <span>🌿</span>
+        <span>Calm</span>
+      </button>
+      <button id="btn-koi-butterflies" type="button" class="glass-pill active-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5">
+        <span>🦋</span>
+        <span>Butterflies</span>
+      </button>
+      <button id="btn-koi-clear" type="button" class="glass-pill px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-rose-200">
+        <span>✨</span>
+        <span>Clear pond</span>
+      </button>
+    </div>
+
+    <!-- Helper Hint Banner -->
+    <div id="koi-hint" class="text-[11px] text-amber-100/80 bg-slate-950/50 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md text-center">
+      Click a card to release a koi, or drag a fish from its card onto the water · Touch &amp; drag water for ripples · Drag whirlpool center when active
+    </div>
+
+    <!-- Bottom Translucent Selection Panel with Four Koi Varieties -->
+    <div class="pointer-events-auto glass-panel p-2.5 sm:p-3 rounded-3xl w-full max-w-3xl grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+      
+      <!-- 1. Kohaku -->
+      <div class="koi-card rounded-2xl p-2.5 sm:p-3 flex items-center gap-2.5" data-variety="kohaku" role="button" tabindex="0" aria-label="Release or drag Kohaku koi">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden" style="background: radial-gradient(circle at 30% 30%, #ffffff 35%, #ef4444 75%, #991b1b 100%);">
+          <svg viewBox="0 0 40 40" class="w-8 h-8 drop-shadow">
+            <path d="M8 20 C14 11, 25 12, 33 20 C25 28, 14 29, 8 20 Z" fill="#fff"/>
+            <circle cx="16" cy="18" r="4.5" fill="#e11d48"/>
+            <circle cx="24" cy="21" r="3.2" fill="#e11d48"/>
+            <path d="M31 20 L38 14 L36 20 L38 26 Z" fill="#fda4af"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-semibold text-white truncate">Kohaku</div>
+          <div class="text-[10px] text-rose-200/85 truncate">White &amp; Crimson · Rooh Barooh</div>
+          <div class="text-[9px] text-teal-300/80 mt-0.5">Click or drag to pond</div>
+        </div>
+      </div>
+
+      <!-- 2. Showa -->
+      <div class="koi-card rounded-2xl p-2.5 sm:p-3 flex items-center gap-2.5" data-variety="showa" role="button" tabindex="0" aria-label="Release or drag Showa koi">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden" style="background: radial-gradient(circle at 30% 30%, #1e293b 35%, #dc2626 75%, #f8fafc 100%);">
+          <svg viewBox="0 0 40 40" class="w-8 h-8 drop-shadow">
+            <path d="M8 20 C14 11, 25 12, 33 20 C25 28, 14 29, 8 20 Z" fill="#1e293b"/>
+            <path d="M13 16 Q18 14 21 20 Q16 24 13 16 Z" fill="#ef4444"/>
+            <circle cx="24" cy="19" r="3.5" fill="#f8fafc"/>
+            <path d="M31 20 L38 14 L36 20 L38 26 Z" fill="#f87171"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-semibold text-white truncate">Showa</div>
+          <div class="text-[10px] text-amber-200/85 truncate">Sumi, Red &amp; White · Malkin</div>
+          <div class="text-[9px] text-teal-300/80 mt-0.5">Click or drag to pond</div>
+        </div>
+      </div>
+
+      <!-- 3. Golden Ogon -->
+      <div class="koi-card rounded-2xl p-2.5 sm:p-3 flex items-center gap-2.5" data-variety="ogon" role="button" tabindex="0" aria-label="Release or drag Golden Ogon koi">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden" style="background: radial-gradient(circle at 30% 30%, #fef08a 25%, #f59e0b 75%, #92400e 100%);">
+          <svg viewBox="0 0 40 40" class="w-8 h-8 drop-shadow">
+            <path d="M8 20 C14 11, 25 12, 33 20 C25 28, 14 29, 8 20 Z" fill="#fbbf24"/>
+            <path d="M12 18 C18 15, 24 16, 29 20" stroke="#fef08a" stroke-width="2" fill="none"/>
+            <path d="M31 20 L38 14 L36 20 L38 26 Z" fill="#fde047"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-semibold text-white truncate">Golden Ogon</div>
+          <div class="text-[10px] text-amber-200/90 truncate">Sunlit Gold · Noor-e-Chashm</div>
+          <div class="text-[9px] text-teal-300/80 mt-0.5">Click or drag to pond</div>
+        </div>
+      </div>
+
+      <!-- 4. Platinum -->
+      <div class="koi-card rounded-2xl p-2.5 sm:p-3 flex items-center gap-2.5" data-variety="platinum" role="button" tabindex="0" aria-label="Release or drag Platinum koi">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden" style="background: radial-gradient(circle at 30% 30%, #ffffff 35%, #cbd5e1 80%, #64748b 100%);">
+          <svg viewBox="0 0 40 40" class="w-8 h-8 drop-shadow">
+            <path d="M8 20 C14 11, 25 12, 33 20 C25 28, 14 29, 8 20 Z" fill="#f8fafc"/>
+            <path d="M12 19 C18 16, 24 17, 29 20" stroke="#bae6fd" stroke-width="2" fill="none"/>
+            <path d="M31 20 L38 14 L36 20 L38 26 Z" fill="#e2e8f0"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-semibold text-white truncate">Platinum</div>
+          <div class="text-[10px] text-sky-200/90 truncate">Silver Starlight · April 5th</div>
+          <div class="text-[9px] text-teal-300/80 mt-0.5">Click or drag to pond</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- REALM 2 CONTROLS: "NORTHBOUND" VIKING LONGSHIP FJORD JOURNEY          -->
+  <!-- ===================================================================== -->
+  <section id="northbound-ui" class="fixed inset-x-0 bottom-0 z-20 p-3 sm:p-5 pointer-events-none flex flex-col items-center gap-2.5 ui-transition">
+    
+    <!-- Mobile Touch Steering & Speed Pad -->
+    <div class="pointer-events-auto flex sm:hidden items-center justify-between w-full max-w-md px-2 gap-2">
+      <div class="flex items-center gap-1.5 glass-panel p-1.5 rounded-2xl">
+        <button id="touch-left" type="button" class="glass-pill w-11 h-10 rounded-xl text-sm font-bold active:scale-95" aria-label="Steer Left">◀</button>
+        <button id="touch-right" type="button" class="glass-pill w-11 h-10 rounded-xl text-sm font-bold active:scale-95" aria-label="Steer Right">▶</button>
+      </div>
+      <div class="text-[11px] text-amber-100/80 glass-panel px-2.5 py-1.5 rounded-xl">
+        <span id="mobile-speed-readout">4.2 kn</span>
+      </div>
+      <div class="flex items-center gap-1.5 glass-panel p-1.5 rounded-2xl">
+        <button id="touch-slower" type="button" class="glass-pill w-11 h-10 rounded-xl text-sm font-bold active:scale-95" aria-label="Slow Down">−</button>
+        <button id="touch-faster" type="button" class="glass-pill w-11 h-10 rounded-xl text-sm font-bold active:scale-95" aria-label="Speed Up">+</button>
+      </div>
+    </div>
+
+    <!-- Telemetry & Editorial Chapter Status Strip -->
+    <div class="pointer-events-auto glass-panel px-3.5 py-1.5 rounded-full flex flex-wrap items-center justify-center gap-3 text-[11px] text-amber-100/90">
+      <span>Vessel: <strong class="text-amber-200 font-medium">Drakkar Malkin · Innu (05·04)</strong></span>
+      <span class="opacity-40">|</span>
+      <span>Speed: <strong id="nb-speed-label" class="text-teal-300 font-medium">4.2 knots</strong></span>
+      <span class="opacity-40 hidden sm:inline">|</span>
+      <span class="hidden sm:inline">Steer: <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px]">A</kbd><kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px] ml-0.5">D</kbd> · Speed: <kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px]">W</kbd><kbd class="px-1.5 py-0.5 bg-white/10 rounded text-[10px] ml-0.5">S</kbd> · Drag to look</span>
+    </div>
+
+    <!-- Main Compact Translucent Editorial Control Bar -->
+    <div class="pointer-events-auto glass-panel p-2 sm:p-2.5 rounded-2xl flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 max-w-4xl">
+      
+      <!-- Camera Modes -->
+      <div class="flex items-center gap-1 bg-slate-950/40 p-1 rounded-xl border border-white/10">
+        <span class="text-[10px] uppercase tracking-wider text-slate-300 px-2 hidden md:inline">Camera</span>
+        <button id="cam-follow" type="button" class="glass-pill active-btn px-2.5 py-1 rounded-lg text-xs font-medium">Follow</button>
+        <button id="cam-orbit" type="button" class="glass-pill px-2.5 py-1 rounded-lg text-xs font-medium">Orbit</button>
+        <button id="cam-cinematic" type="button" class="glass-pill px-2.5 py-1 rounded-lg text-xs font-medium">Cinematic</button>
+      </div>
+
+      <!-- Lighting Presets -->
+      <div class="flex items-center gap-1 bg-slate-950/40 p-1 rounded-xl border border-white/10">
+        <span class="text-[10px] uppercase tracking-wider text-slate-300 px-2 hidden md:inline">Light</span>
+        <button id="light-morning" type="button" class="glass-pill active-btn px-2.5 py-1 rounded-lg text-xs font-medium">🌅 Morning</button>
+        <button id="light-overcast" type="button" class="glass-pill px-2.5 py-1 rounded-lg text-xs font-medium">🌫️ Overcast</button>
+        <button id="light-moonlight" type="button" class="glass-pill px-2.5 py-1 rounded-lg text-xs font-medium">🌙 Moonlight</button>
+      </div>
+
+      <!-- Journey & Ship Actions -->
+      <div class="flex items-center gap-1 bg-slate-950/40 p-1 rounded-xl border border-white/10">
+        <button id="btn-auto-journey" type="button" class="glass-pill active-btn px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1" title="Toggle Automatic Fjord Journey">
+          <span>🧭</span>
+          <span>Auto Journey</span>
+        </button>
+        <button id="btn-nb-pause" type="button" class="glass-pill px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
+          <span id="nb-pause-icon">⏸</span>
+          <span id="nb-pause-label">Pause</span>
+        </button>
+        <button id="btn-nb-reset" type="button" class="glass-pill px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
+          <span>↺</span>
+          <span>Reset</span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- INAYA'S SANCTUARY MODAL ("ROOH BAROOH" DEDICATION & PEACE METER)      -->
+  <!-- ===================================================================== -->
+  <div id="inaya-modal" class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 hidden" role="dialog" aria-modal="true" aria-labelledby="inaya-modal-title">
+    <div class="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-7 border border-amber-200/35 text-amber-50 relative overflow-hidden">
+      <div class="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-rose-900/35 blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-teal-500/20 blur-2xl pointer-events-none"></div>
+      
+      <div class="flex items-start justify-between gap-4 relative z-10">
+        <div>
+          <span class="text-[10px] uppercase tracking-[0.22em] text-pink-200/90 bg-rose-950/80 border border-pink-300/30 px-2.5 py-1 rounded-full">
+            Innu's Sanctuary · Rooh Barooh
+          </span>
+          <h2 id="inaya-modal-title" class="serif-editorial text-2xl sm:text-3xl font-semibold mt-2 text-amber-100">
+            For Miss Inaya Khan (نور چشم)
+          </h2>
+          <p class="text-xs text-teal-200/80">
+            Innu · Malkin · April 5th (05·04) · Architect of Peace &amp; Clarity
+          </p>
+        </div>
+        <button id="btn-close-inaya-modal" type="button" class="glass-pill w-8 h-8 rounded-full flex items-center justify-center text-sm text-amber-100" aria-label="Close tribute">
+          ✕
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-3 text-xs sm:text-sm leading-relaxed text-amber-50/90 relative z-10">
+        <p>
+          Whether gliding across the quiet turquoise waters of <strong>Innu's Sanctuary</strong> beneath luminous pink &amp; champagne butterflies, or sailing <strong>Northbound</strong> aboard the longship <em>Malkin</em> under the April 5th aurora, both worlds were crafted specifically for you.
+        </p>
+        <blockquote class="p-3 rounded-2xl bg-rose-950/45 border-l-2 border-amber-200/60 italic serif-editorial text-base text-amber-100">
+          “From grounding the literature and refining the visual hierarchy of Sentinel V7 at KMCLU Lucknow, to our cherished keepsakes in <em>malkin</em>, <em>apple15</em>, and every quiet moment of <em>Rooh Barooh</em> — thank you for being the light of my eyes (نور چشم) and my steady harbor.”
+        </blockquote>
+
+        <!-- Interactive Peace Meter for Innu -->
+        <div class="p-3.5 rounded-2xl bg-slate-900/65 border border-white/10">
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-medium text-pink-200 flex items-center gap-1.5">
+              <span>🦋</span>
+              <span>Innu's Sanctuary Peace Meter</span>
+            </span>
+            <span id="peace-meter-value" class="font-semibold text-teal-300">98% Serene</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div id="peace-meter-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-200 to-teal-300 transition-all duration-500" style="width: 98%;"></div>
+          </div>
+          <div class="flex items-center justify-between mt-2.5 gap-2">
+            <span class="text-[11px] text-slate-300">Release a golden blessing &amp; butterfly bloom:</span>
+            <button id="btn-send-blessing" type="button" class="glass-pill active-btn px-3 py-1 rounded-lg text-xs font-medium text-amber-50">
+              ✨ Sunday Bloom
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center justify-between text-[11px] text-slate-300/80 relative z-10">
+        <span>With love, Abdullah Ashraf</span>
+        <button id="btn-dismiss-inaya-modal" type="button" class="glass-pill px-4 py-1.5 rounded-xl text-xs font-medium text-amber-100">
+          Return to Realm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // =========================================================================
+    // 1. GLOBAL STATE & CONFIGURATION
+    // =========================================================================
+    const APP_STATE = {
+      activeRealm: 'northbound', // 'koi' | 'northbound'
+      uiHidden: false,
+      soundEnabled: false,
+      tabHidden: false,
+      peaceLevel: 98,
+      koi: {
+        rain: false,
+        whirlpool: false,
+        whirlpoolCenter: new THREE.Vector2(0, 0),
+        draggingWhirlpool: false,
+        butterflies: true,
+        fishList: [],
+        droplets: []
+      },
+      nb: {
+        paused: false,
+        autoJourney: true,
+        cameraMode: 'follow', // 'follow' | 'orbit' | 'cinematic'
+        lightPreset: 'morning', // 'morning' | 'overcast' | 'moonlight'
+        speed: 4.2,
+        targetSpeed: 4.2,
+        steerInput: 0,
+        heading: 0,
+        shipPos: new THREE.Vector3(0, 0, 110),
+        oarPhase: 0,
+        orbitYaw: 0.35,
+        orbitPitch: 0.28,
+        orbitDist: 26,
+        cinematicTimer: 0,
+        cinematicIndex: 0
+      }
+    };
+
+    // =========================================================================
+    // 2. WEB AUDIO SYNTHESIZER (SPLASHES, DROPLETS, SWIM, RAIN, VORTEX, FJORD)
+    // =========================================================================
+    class SanctuaryAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.koiAmbienceGain = null;
+        this.rainGain = null;
+        this.whirlpoolGain = null;
+        this.whirlpoolFilter = null;
+        this.nbAmbienceGain = null;
+        this.nbWindFilter = null;
+        this.initialized = false;
+        this.lastBirdTime = 0;
+        this.lastNoteTime = 0;
+      }
+
+      init() {
+        if (this.initialized) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = 0.0001;
+        this.masterGain.connect(this.ctx.destination);
+
+        const sr = this.ctx.sampleRate;
+        const bufLen = sr * 3;
+        this.noiseBuffer = this.ctx.createBuffer(1, bufLen, sr);
+        const data = this.noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bufLen; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.04;
+          b6 = white * 0.115926;
+        }
+
+        // 1. Koi Gentle Swimming Water Loop
+        const swimNoise = this.ctx.createBufferSource();
+        swimNoise.buffer = this.noiseBuffer;
+        swimNoise.loop = true;
+        const swimFilter = this.ctx.createBiquadFilter();
+        swimFilter.type = 'bandpass';
+        swimFilter.frequency.value = 340;
+        swimFilter.Q.value = 1.2;
+        this.koiAmbienceGain = this.ctx.createGain();
+        this.koiAmbienceGain.gain.value = 0.0;
+        swimNoise.connect(swimFilter);
+        swimFilter.connect(this.koiAmbienceGain);
+        this.koiAmbienceGain.connect(this.masterGain);
+        swimNoise.start();
+
+        // 2. Rain Loop
+        const rainNoise = this.ctx.createBufferSource();
+        rainNoise.buffer = this.noiseBuffer;
+        rainNoise.loop = true;
+        const rainFilter = this.ctx.createBiquadFilter();
+        rainFilter.type = 'highpass';
+        rainFilter.frequency.value = 1200;
+        this.rainGain = this.ctx.createGain();
+        this.rainGain.gain.value = 0.0;
+        rainNoise.connect(rainFilter);
+        rainFilter.connect(this.rainGain);
+        this.rainGain.connect(this.masterGain);
+        rainNoise.start();
+
+        // 3. Whirlpool Vortex Loop
+        const vortexNoise = this.ctx.createBufferSource();
+        vortexNoise.buffer = this.noiseBuffer;
+        vortexNoise.loop = true;
+        this.whirlpoolFilter = this.ctx.createBiquadFilter();
+        this.whirlpoolFilter.type = 'lowpass';
+        this.whirlpoolFilter.frequency.value = 190;
+        this.whirlpoolGain = this.ctx.createGain();
+        this.whirlpoolGain.gain.value = 0.0;
+        vortexNoise.connect(this.whirlpoolFilter);
+        this.whirlpoolFilter.connect(this.whirlpoolGain);
+        this.whirlpoolGain.connect(this.masterGain);
+        vortexNoise.start();
+
+        // 4. Northbound Fjord Wind & Lapping Water Loop
+        const windNoise = this.ctx.createBufferSource();
+        windNoise.buffer = this.noiseBuffer;
+        windNoise.loop = true;
+        this.nbWindFilter = this.ctx.createBiquadFilter();
+        this.nbWindFilter.type = 'bandpass';
+        this.nbWindFilter.frequency.value = 260;
+        this.nbWindFilter.Q.value = 2.2;
+        this.nbAmbienceGain = this.ctx.createGain();
+        this.nbAmbienceGain.gain.value = 0.0;
+        windNoise.connect(this.nbWindFilter);
+        this.nbWindFilter.connect(this.nbAmbienceGain);
+        this.nbAmbienceGain.connect(this.masterGain);
+        windNoise.start();
+
+        this.initialized = true;
+      }
+
+      setSoundEnabled(enabled) {
+        this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended' && enabled) {
+          this.ctx.resume();
+        }
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+        const target = (enabled && !APP_STATE.tabHidden) ? 0.85 : 0.0001;
+        this.masterGain.gain.linearRampToValueAtTime(target, now + 0.45);
+        this.updateContinuousMix();
+      }
+
+      updateContinuousMix() {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const isKoi = APP_STATE.activeRealm === 'koi';
+        const isNb = APP_STATE.activeRealm === 'northbound';
+
+        this.koiAmbienceGain.gain.setTargetAtTime(isKoi ? 0.22 : 0.0, now, 0.25);
+        this.rainGain.gain.setTargetAtTime((isKoi && APP_STATE.koi.rain) ? 0.35 : 0.0, now, 0.3);
+        this.whirlpoolGain.gain.setTargetAtTime((isKoi && APP_STATE.koi.whirlpool) ? 0.48 : 0.0, now, 0.3);
+        this.nbAmbienceGain.gain.setTargetAtTime(isNb ? 0.32 : 0.0, now, 0.3);
+        if (isNb && this.nbWindFilter) {
+          this.nbWindFilter.frequency.setTargetAtTime(210 + APP_STATE.nb.speed * 28, now, 0.2);
+        }
+      }
+
+      playKoiSplash(intensity = 1.0) {
+        if (!this.initialized || !APP_STATE.soundEnabled || APP_STATE.tabHidden) return;
+        const now = this.ctx.currentTime;
+
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(480, now);
+        filter.frequency.exponentialRampToValueAtTime(1100, now + 0.14);
+        filter.frequency.exponentialRampToValueAtTime(260, now + 0.45);
+        filter.Q.value = 1.8;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.45 * intensity, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        src.start(now, Math.random() * 1.5, 0.5);
+
+        const notes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+        const count = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < count; i++) {
+          const osc = this.ctx.createOscillator();
+          const dGain = this.ctx.createGain();
+          const start = now + 0.08 + i * 0.09;
+          const freq = notes[Math.floor(Math.random() * notes.length)];
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq * 0.92, start);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.18, start + 0.11);
+
+          dGain.gain.setValueAtTime(0.0001, start);
+          dGain.gain.linearRampToValueAtTime(0.11 * intensity, start + 0.015);
+          dGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.36);
+
+          osc.connect(dGain);
+          dGain.connect(this.masterGain);
+          osc.start(start);
+          osc.stop(start + 0.38);
+        }
+      }
+
+      playMusicalDroplet() {
+        if (!this.initialized || !APP_STATE.soundEnabled || APP_STATE.tabHidden) return;
+        const now = this.ctx.currentTime;
+        if (now - this.lastNoteTime < 0.11) return;
+        this.lastNoteTime = now;
+
+        const notes = [587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66];
+        const freq = notes[Math.floor(Math.random() * notes.length)];
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.12, now + 0.09);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      }
+
+      playOarStroke() {
+        if (!this.initialized || !APP_STATE.soundEnabled || APP_STATE.tabHidden) return;
+        if (APP_STATE.activeRealm !== 'northbound' || APP_STATE.nb.paused) return;
+        const now = this.ctx.currentTime;
+
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(320, now);
+        filter.frequency.exponentialRampToValueAtTime(640, now + 0.18);
+        filter.frequency.exponentialRampToValueAtTime(220, now + 0.42);
+        filter.Q.value = 2.0;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.22, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        src.start(now, Math.random() * 1.2, 0.46);
+      }
+
+      maybePlayFjordBird() {
+        if (!this.initialized || !APP_STATE.soundEnabled || APP_STATE.tabHidden) return;
+        if (APP_STATE.activeRealm !== 'northbound' || APP_STATE.nb.paused) return;
+        const now = this.ctx.currentTime;
+        if (now - this.lastBirdTime < 7.5 || Math.random() > 0.015) return;
+        this.lastBirdTime = now;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        const base = 1350 + Math.random() * 350;
+        osc.frequency.setValueAtTime(base, now);
+        osc.frequency.exponentialRampToValueAtTime(base * 1.18, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(base * 0.78, now + 0.42);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.035, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.46);
+      }
+    }
+
+    const audioEngine = new SanctuaryAudioEngine();
+
+    document.addEventListener('visibilitychange', () => {
+      APP_STATE.tabHidden = document.hidden;
+      audioEngine.setSoundEnabled(APP_STATE.soundEnabled);
+    });
+
+    // =========================================================================
+    // 3. PROCEDURAL PBR & SCALE TEXTURE GENERATORS (100% SELF-CONTAINED)
+    // =========================================================================
+    function createKoiTexture(variety) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      if (variety === 'kohaku') {
+        ctx.fillStyle = '#fdfbf7';
+        ctx.fillRect(0, 0, 512, 256);
+        ctx.fillStyle = '#dc2626';
+        const spots = [
+          [130, 128, 75, 58],
+          [255, 118, 68, 52],
+          [370, 134, 52, 42]
+        ];
+        spots.forEach(([x, y, rx, ry]) => {
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, ry, 0.15, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (variety === 'showa') {
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(0, 0, 512, 256);
+        ctx.fillStyle = '#f8fafc';
+        [[170, 120, 65, 55], [330, 135, 60, 48], [85, 128, 40, 36]].forEach(([x, y, rx, ry]) => {
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, ry, -0.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = '#e11d48';
+        [[140, 135, 54, 44], [250, 126, 62, 50], [390, 122, 42, 35]].forEach(([x, y, rx, ry]) => {
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, ry, 0.25, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (variety === 'ogon') {
+        const grad = ctx.createLinearGradient(0, 0, 512, 256);
+        grad.addColorStop(0, '#fef08a');
+        grad.addColorStop(0.5, '#f59e0b');
+        grad.addColorStop(1, '#d97706');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 256);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, 512, 256);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.5, '#e2e8f0');
+        grad.addColorStop(1, '#94a3b8');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 256);
+      }
+
+      ctx.strokeStyle = (variety === 'ogon' || variety === 'platinum')
+        ? 'rgba(255, 255, 255, 0.38)'
+        : 'rgba(15, 23, 42, 0.16)';
+      ctx.lineWidth = 1.6;
+      const stepX = 18, stepY = 16;
+      for (let x = 36; x < 440; x += stepX) {
+        for (let y = 16; y < 240; y += stepY) {
+          const oy = (Math.floor(x / stepX) % 2) * (stepY * 0.5);
+          ctx.beginPath();
+          ctx.arc(x, y + oy, 10, -Math.PI * 0.45, Math.PI * 0.45);
+          ctx.stroke();
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.ClampToEdgeWrapping;
+      tex.wrapT = THREE.ClampToEdgeWrapping;
+      return tex;
+    }
+
+    function createWoodTextures() {
+      const cAlbedo = document.createElement('canvas');
+      const cBump = document.createElement('canvas');
+      cAlbedo.width = cBump.width = 512;
+      cAlbedo.height = cBump.height = 512;
+      const ctxA = cAlbedo.getContext('2d');
+      const ctxB = cBump.getContext('2d');
+
+      ctxA.fillStyle = '#5c3a21';
+      ctxA.fillRect(0, 0, 512, 512);
+      ctxB.fillStyle = '#808080';
+      ctxB.fillRect(0, 0, 512, 512);
+
+      for (let y = 0; y < 512; y += 64) {
+        ctxA.fillStyle = 'rgba(20, 10, 4, 0.55)';
+        ctxA.fillRect(0, y, 512, 3);
+        ctxB.fillStyle = '#202020';
+        ctxB.fillRect(0, y, 512, 4);
+        for (let i = 0; i < 90; i++) {
+          const gy = y + 4 + Math.random() * 58;
+          ctxA.fillStyle = i % 2 === 0 ? 'rgba(95, 58, 32, 0.28)' : 'rgba(38, 22, 10, 0.25)';
+          ctxA.fillRect(0, gy, 512, 1.5);
+          ctxB.fillStyle = i % 2 === 0 ? '#9a9a9a' : '#666666';
+          ctxB.fillRect(0, gy, 512, 1.5);
+        }
+      }
+
+      const map = new THREE.CanvasTexture(cAlbedo);
+      const bumpMap = new THREE.CanvasTexture(cBump);
+      map.wrapS = map.wrapT = bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(3, 2);
+      bumpMap.repeat.set(3, 2);
+      return { map, bumpMap };
+    }
+
+    function createSailTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      const stripes = 8;
+      const sw = 512 / stripes;
+      for (let i = 0; i < stripes; i++) {
+        ctx.fillStyle = (i % 2 === 0) ? '#7a1c30' : '#efe2cf';
+        ctx.fillRect(i * sw, 0, sw, 512);
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.06)';
+      for (let y = 0; y < 512; y += 4) {
+        ctx.fillRect(0, y, 512, 1);
+      }
+      ctx.save();
+      ctx.translate(256, 245);
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 68, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-55, -52, -62, 12, 0, 10);
+      ctx.bezierCurveTo(-48, 22, -38, 55, 0, 18);
+      ctx.bezierCurveTo(38, 55, 48, 22, 0, 10);
+      ctx.bezierCurveTo(62, 12, 55, -52, 0, 0);
+      ctx.fill();
+      ctx.restore();
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createRockTextures() {
+      const cAlbedo = document.createElement('canvas');
+      const cBump = document.createElement('canvas');
+      cAlbedo.width = cBump.width = 512;
+      cAlbedo.height = cBump.height = 512;
+      const ctxA = cAlbedo.getContext('2d');
+      const ctxB = cBump.getContext('2d');
+
+      ctxA.fillStyle = '#364147';
+      ctxA.fillRect(0, 0, 512, 512);
+      ctxB.fillStyle = '#808080';
+      ctxB.fillRect(0, 0, 512, 512);
+
+      for (let i = 0; i < 650; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const w = 18 + Math.random() * 90;
+        const h = 4 + Math.random() * 18;
+        const shade = Math.floor(40 + Math.random() * 55);
+        ctxA.fillStyle = `rgba(${shade}, ${shade + 6}, ${shade + 10}, 0.35)`;
+        ctxA.fillRect(x, y, w, h);
+        const b = Math.floor(70 + Math.random() * 120);
+        ctxB.fillStyle = `rgb(${b},${b},${b})`;
+        ctxB.fillRect(x, y, w, h);
+      }
+
+      const map = new THREE.CanvasTexture(cAlbedo);
+      const bumpMap = new THREE.CanvasTexture(cBump);
+      map.wrapS = map.wrapT = bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(8, 6);
+      bumpMap.repeat.set(8, 6);
+      return { map, bumpMap };
+    }
+
+    // =========================================================================
+    // 4. WEBGL RENDERER SETUP
+    // =========================================================================
+    const container = document.getElementById('webgl-container');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    container.appendChild(renderer.domElement);
+
+    // =========================================================================
+    // 5. REALM 1: INTERACTIVE 3D KOI POND ("INNU'S SANCTUARY")
+    // =========================================================================
+    const koiScene = new THREE.Scene();
+    koiScene.background = new THREE.Color(0x052c36);
+    koiScene.fog = new THREE.FogExp2(0x063844, 0.014);
+
+    const koiCamera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 200);
+    koiCamera.position.set(0, 36, 4.5);
+    koiCamera.lookAt(0, 0, 0);
+
+    const koiAmbient = new THREE.AmbientLight(0x99f6e4, 0.72);
+    koiScene.add(koiAmbient);
+
+    const koiSun = new THREE.DirectionalLight(0xfffbeb, 1.35);
+    koiSun.position.set(14, 38, 12);
+    koiSun.castShadow = true;
+    koiSun.shadow.mapSize.set(1024, 1024);
+    koiSun.shadow.camera.near = 5;
+    koiSun.shadow.camera.far = 70;
+    const dKoi = 26;
+    koiSun.shadow.camera.left = -dKoi;
+    koiSun.shadow.camera.right = dKoi;
+    koiSun.shadow.camera.top = dKoi;
+    koiSun.shadow.camera.bottom = -dKoi;
+    koiScene.add(koiSun);
+
+    const POND_DEPTH = -5.2;
+    const pondFloorGeo = new THREE.PlaneGeometry(76, 56, 64, 64);
+    pondFloorGeo.rotateX(-Math.PI / 2);
+
+    const pondFloorUniforms = {
+      uTime: { value: 0 },
+      uWhirlpoolActive: { value: 0 },
+      uWhirlpoolCenter: { value: new THREE.Vector2(0, 0) }
+    };
+
+    const pondFloorMat = new THREE.ShaderMaterial({
+      uniforms: pondFloorUniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        void main() {
+          vUv = uv;
+          vec3 pos = position;
+          float dist = length(pos.xz * vec2(0.032, 0.042));
+          pos.y += smoothstep(0.6, 1.3, dist) * 1.4;
+          vec4 wp = modelMatrix * vec4(pos, 1.0);
+          vWorldPos = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uWhirlpoolActive;
+        uniform vec2 uWhirlpoolCenter;
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
+                     mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
+        }
+        float causticPattern(vec2 uv, float t) {
+          vec2 p = uv * 0.34;
+          float n1 = noise(p + vec2(t * 0.35, -t * 0.25));
+          float n2 = noise(p * 1.45 - vec2(t * 0.28, t * 0.32) + n1 * 0.65);
+          float c = 1.0 - abs(n1 - n2) * 3.2;
+          return pow( clamp(c, 0.0, 1.0), 3.2 );
+        }
+
+        void main() {
+          vec2 xz = vWorldPos.xz;
+          float radial = length(xz * vec2(0.034, 0.045));
+
+          float pebble = noise(xz * 2.4) * 0.5 + noise(xz * 6.5) * 0.5;
+          vec3 deepTurquoise = vec3(0.03, 0.24, 0.31);
+          vec3 clearTurquoise = vec3(0.08, 0.49, 0.54);
+          vec3 sandTone = vec3(0.14, 0.58, 0.60);
+          vec3 baseCol = mix(clearTurquoise, deepTurquoise, clamp(radial * 0.75, 0.0, 1.0));
+          baseCol = mix(baseCol, sandTone, pebble * 0.28);
+
+          float c1 = causticPattern(xz, uTime);
+          float c2 = causticPattern(xz * 1.25 + vec2(4.2, 1.7), uTime * 1.15);
+          float caustics = (c1 + c2 * 0.7) * (1.0 - smoothstep(0.65, 1.25, radial));
+
+          vec3 col = baseCol + vec3(0.42, 0.92, 0.88) * caustics * 0.55;
+
+          if (uWhirlpoolActive > 0.01) {
+            float wd = length(xz - uWhirlpoolCenter);
+            float swirl = smoothstep(5.5, 0.2, wd);
+            col = mix(col, vec3(0.02, 0.14, 0.20), swirl * 0.45 * uWhirlpoolActive);
+          }
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `
+    });
+
+    const pondFloorMesh = new THREE.Mesh(pondFloorGeo, pondFloorMat);
+    pondFloorMesh.position.y = POND_DEPTH;
+    koiScene.add(pondFloorMesh);
+
+    const stoneGroup = new THREE.Group();
+    const stoneGeo = new THREE.DodecahedronGeometry(1, 2);
+    const stoneColors = [0x1e4e58, 0x285e68, 0x163b44, 0x3b6e75, 0x475569];
+    for (let i = 0; i < 42; i++) {
+      const mat = new THREE.MeshStandardMaterial({
+        color: stoneColors[i % stoneColors.length],
+        roughness: 0.75,
+        metalness: 0.05
+      });
+      const m = new THREE.Mesh(stoneGeo, mat);
+      const angle = (i / 42) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+      const radX = 15 + Math.random() * 8;
+      const radZ = 10 + Math.random() * 5;
+      m.position.set(
+        Math.cos(angle) * radX * (Math.random() > 0.25 ? 1 : 0.45),
+        POND_DEPTH + 0.25,
+        Math.sin(angle) * radZ * (Math.random() > 0.25 ? 1 : 0.45)
+      );
+      m.scale.set(0.6 + Math.random() * 1.1, 0.28 + Math.random() * 0.25, 0.5 + Math.random() * 0.9);
+      m.rotation.y = Math.random() * Math.PI;
+      stoneGroup.add(m);
+    }
+    koiScene.add(stoneGroup);
+
+    const lilyGroup = new THREE.Group();
+    const padSpots = [
+      [-14.5, -8.2, 1.4], [-13.0, -6.8, 0.95],
+      [14.2, -7.5, 1.3], [15.5, -5.8, 1.0],
+      [-13.8, 7.2, 1.25], [13.5, 7.6, 1.35]
+    ];
+    padSpots.forEach(([x, z, r], idx) => {
+      const padGeo = new THREE.CircleGeometry(r, 24, 0.15, Math.PI * 1.88);
+      padGeo.rotateX(-Math.PI / 2);
+      const padMat = new THREE.MeshStandardMaterial({
+        color: idx % 2 === 0 ? 0x15803d : 0x166534,
+        roughness: 0.65,
+        side: THREE.DoubleSide
+      });
+      const pad = new THREE.Mesh(padGeo, padMat);
+      pad.position.set(x, 0.03, z);
+      pad.rotation.y = idx * 1.2;
+
+      if (idx % 2 === 0) {
+        const flower = new THREE.Group();
+        const petalGeo = new THREE.ConeGeometry(0.24, 0.55, 6);
+        const petalMat = new THREE.MeshStandardMaterial({
+          color: idx === 0 ? 0xfda4af : 0xfef3c7,
+          roughness: 0.4
+        });
+        for (let p = 0; p < 8; p++) {
+          const pm = new THREE.Mesh(petalGeo, petalMat);
+          const a = (p / 8) * Math.PI * 2;
+          pm.position.set(Math.cos(a) * 0.2, 0.12, Math.sin(a) * 0.2);
+          pm.rotation.z = -Math.cos(a) * 0.65;
+          pm.rotation.x = Math.sin(a) * 0.65;
+          flower.add(pm);
+        }
+        pad.add(flower);
+      }
+      lilyGroup.add(pad);
+    });
+    koiScene.add(lilyGroup);
+
+    const MAX_RIPPLES = 32;
+    const rippleData = [];
+    for (let i = 0; i < MAX_RIPPLES; i++) {
+      rippleData.push(new THREE.Vector4(999, 999, -100, 0));
+    }
+    let rippleCursor = 0;
+
+    function addWaterRipple(x, z, amplitude = 1.0) {
+      rippleData[rippleCursor].set(x, z, performance.now() * 0.001, amplitude);
+      rippleCursor = (rippleCursor + 1) % MAX_RIPPLES;
+    }
+
+    const koiWaterGeo = new THREE.PlaneGeometry(70, 50, 128, 96);
+    koiWaterGeo.rotateX(-Math.PI / 2);
+
+    const koiWaterUniforms = {
+      uTime: { value: 0 },
+      uRipples: { value: rippleData },
+      uWhirlpoolActive: { value: 0 },
+      uWhirlpoolCenter: { value: new THREE.Vector2(0, 0) }
+    };
+
+    const koiWaterMat = new THREE.ShaderMaterial({
+      uniforms: koiWaterUniforms,
+      transparent: true,
+      depthWrite: false,
+      vertexShader: `
+        uniform float uTime;
+        uniform vec4 uRipples[${MAX_RIPPLES}];
+        uniform float uWhirlpoolActive;
+        uniform vec2 uWhirlpoolCenter;
+        varying vec3 vWorldPos;
+        varying float vWaveHeight;
+        varying float vVortexFoam;
+
+        void main() {
+          vec3 pos = position;
+          float h = sin(pos.x * 0.35 + uTime * 1.4) * 0.04 + cos(pos.z * 0.42 + uTime * 1.1) * 0.04;
+
+          for (int i = 0; i < ${MAX_RIPPLES}; i++) {
+            vec4 rp = uRipples[i];
+            float age = uTime - rp.z;
+            if (age > 0.0 && age < 4.5) {
+              float d = length(pos.xz - rp.xy);
+              float radius = age * 4.2;
+              float band = exp(-pow(d - radius, 2.0) * 1.8);
+              float decay = exp(-age * 1.05);
+              float depression = -exp(-d * 1.6) * exp(-age * 5.5) * rp.w * 0.65;
+              h += (sin((d - radius) * 5.8) * band * decay * rp.w * 0.22) + depression;
+            }
+          }
+
+          float foam = 0.0;
+          if (uWhirlpoolActive > 0.01) {
+            float wd = length(pos.xz - uWhirlpoolCenter);
+            float funnel = -exp(-wd * 0.52) * 1.35 * uWhirlpoolActive;
+            float angle = atan(pos.z - uWhirlpoolCenter.y, pos.x - uWhirlpoolCenter.x);
+            float spiral = sin(wd * 3.8 - uTime * 7.5 + angle * 2.0);
+            h += funnel + spiral * exp(-wd * 0.32) * 0.14 * uWhirlpoolActive;
+            foam = clamp((0.5 + 0.5 * spiral) * exp(-wd * 0.36) * uWhirlpoolActive, 0.0, 1.0);
+          }
+
+          pos.y += h;
+          vWaveHeight = h;
+          vVortexFoam = foam;
+          vec4 wp = modelMatrix * vec4(pos, 1.0);
+          vWorldPos = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vWorldPos;
+        varying float vWaveHeight;
+        varying float vVortexFoam;
+
+        void main() {
+          vec3 dx = dFdx(vWorldPos);
+          vec3 dy = dFdy(vWorldPos);
+          vec3 N = normalize(cross(dx, dy));
+
+          vec3 V = normalize(vec3(0.0, 36.0, 4.5) - vWorldPos);
+          vec3 L = normalize(vec3(14.0, 38.0, 12.0));
+          vec3 H = normalize(L + V);
+
+          float spec = pow(max(dot(N, H), 0.0), 96.0);
+          float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+
+          vec3 turquoiseTint = vec3(0.12, 0.74, 0.76);
+          vec3 skyReflect = vec3(0.75, 0.94, 0.98);
+          float rippleHighlight = clamp(abs(vWaveHeight) * 3.8, 0.0, 1.0);
+
+          vec3 col = mix(turquoiseTint, skyReflect, fresnel * 0.55 + rippleHighlight * 0.35);
+          col += vec3(1.0, 0.97, 0.88) * spec * 1.45;
+          col = mix(col, vec3(0.92, 0.99, 1.0), vVortexFoam * 0.78);
+
+          float alpha = clamp(0.24 + fresnel * 0.35 + rippleHighlight * 0.28 + spec * 0.65 + vVortexFoam * 0.45, 0.18, 0.88);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `
+    });
+    koiWaterMat.extensions.derivatives = true;
+
+    const koiWaterMesh = new THREE.Mesh(koiWaterGeo, koiWaterMat);
+    koiWaterMesh.position.y = 0;
+    koiScene.add(koiWaterMesh);
+
+    const koiTextures = {
+      kohaku: createKoiTexture('kohaku'),
+      showa: createKoiTexture('showa'),
+      ogon: createKoiTexture('ogon'),
+      platinum: createKoiTexture('platinum')
+    };
+
+    function createArticulatedKoiMesh(variety) {
+      const root = new THREE.Group();
+
+      const bodyGeo = new THREE.SphereGeometry(0.55, 28, 18);
+      const posAttr = bodyGeo.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        let x = posAttr.getX(i);
+        let y = posAttr.getY(i);
+        let z = posAttr.getZ(i);
+        const t = (z / 0.55);
+        const widthProfile = t < 0
+          ? Math.cos(t * Math.PI * 0.45) * 0.88
+          : Math.pow(1.0 - t * 0.82, 1.25) * 0.88;
+        const heightProfile = t < 0
+          ? Math.cos(t * Math.PI * 0.42) * 0.72
+          : Math.pow(1.0 - t * 0.75, 1.1) * 0.72;
+        posAttr.setXYZ(i, x * widthProfile, y * heightProfile, z * 2.35);
+      }
+      bodyGeo.computeVertexNormals();
+      bodyGeo.userData.basePositions = posAttr.array.slice();
+
+      const isMetallic = (variety === 'ogon' || variety === 'platinum');
+      const bodyMat = new THREE.MeshStandardMaterial({
+        map: koiTextures[variety] || koiTextures.kohaku,
+        roughness: isMetallic ? 0.22 : 0.35,
+        metalness: isMetallic ? 0.55 : 0.12
+      });
+
+      const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+      root.add(bodyMesh);
+
+      const eyeGeo = new THREE.SphereGeometry(0.065, 10, 10);
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1 });
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(0.24, 0.12, -0.92);
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(-0.24, 0.12, -0.92);
+      root.add(leftEye, rightEye);
+
+      const finColor = variety === 'ogon' ? 0xfde047 : (variety === 'platinum' ? 0xf1f5f9 : 0xffe4e6);
+      const finMat = new THREE.MeshStandardMaterial({
+        color: finColor,
+        transparent: true,
+        opacity: 0.78,
+        roughness: 0.3,
+        side: THREE.DoubleSide
+      });
+
+      const pecGeo = new THREE.CircleGeometry(0.42, 12, 0, Math.PI * 0.65);
+      pecGeo.rotateX(-Math.PI / 2);
+      const leftPec = new THREE.Mesh(pecGeo, finMat);
+      leftPec.position.set(0.32, -0.08, -0.45);
+      leftPec.rotation.y = -0.35;
+      const rightPec = new THREE.Mesh(pecGeo, finMat);
+      rightPec.position.set(-0.32, -0.08, -0.45);
+      rightPec.scale.x = -1;
+      rightPec.rotation.y = 0.35;
+      root.add(leftPec, rightPec);
+
+      const venGeo = new THREE.CircleGeometry(0.24, 10, 0, Math.PI * 0.55);
+      venGeo.rotateX(-Math.PI / 2);
+      const leftVen = new THREE.Mesh(venGeo, finMat);
+      leftVen.position.set(0.18, -0.14, 0.18);
+      const rightVen = new THREE.Mesh(venGeo, finMat);
+      rightVen.position.set(-0.18, -0.14, 0.18);
+      rightVen.scale.x = -1;
+      root.add(leftVen, rightVen);
+
+      const dorsalGeo = new THREE.PlaneGeometry(0.18, 0.75, 1, 6);
+      dorsalGeo.rotateX(Math.PI / 2);
+      dorsalGeo.rotateZ(Math.PI / 2);
+      const dorsalFin = new THREE.Mesh(dorsalGeo, finMat);
+      dorsalFin.position.set(0, 0.34, 0.05);
+      root.add(dorsalFin);
+
+      const tailShape = new THREE.Shape();
+      tailShape.moveTo(0, 0);
+      tailShape.quadraticCurveTo(0.45, 0.42, 0.85, 0.48);
+      tailShape.quadraticCurveTo(0.62, 0.0, 0.85, -0.48);
+      tailShape.quadraticCurveTo(0.45, -0.42, 0, 0);
+      const tailGeo = new THREE.ShapeGeometry(tailShape, 8);
+      tailGeo.rotateY(Math.PI / 2);
+      const tailMesh = new THREE.Mesh(tailGeo, finMat);
+      tailMesh.position.set(0, 0, 1.22);
+      root.add(tailMesh);
+
+      const shadowGeo = new THREE.CircleGeometry(0.58, 16);
+      shadowGeo.rotateX(-Math.PI / 2);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        color: 0x02161c,
+        transparent: true,
+        opacity: 0.34,
+        depthWrite: false
+      });
+      const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+      shadowMesh.scale.set(0.85, 1, 2.2);
+
+      root.userData = {
+        bodyMesh,
+        leftPec,
+        rightPec,
+        leftVen,
+        rightVen,
+        dorsalFin,
+        tailMesh,
+        shadowMesh
+      };
+      return root;
+    }
+
+    const dropletGeo = new THREE.SphereGeometry(0.065, 6, 6);
+    const dropletMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.85 });
+
+    function spawnKoiLandingSplash(x, z) {
+      addWaterRipple(x, z, 1.65);
+      audioEngine.playKoiSplash(1.0);
+
+      for (let i = 0; i < 18; i++) {
+        const m = new THREE.Mesh(dropletGeo, dropletMat);
+        const angle = (i / 18) * Math.PI * 2 + Math.random() * 0.3;
+        const speed = 1.6 + Math.random() * 2.4;
+        m.position.set(x + Math.cos(angle) * 0.25, 0.08, z + Math.sin(angle) * 0.25);
+        koiScene.add(m);
+        APP_STATE.koi.droplets.push({
+          mesh: m,
+          vx: Math.cos(angle) * speed,
+          vy: 3.4 + Math.random() * 2.8,
+          vz: Math.sin(angle) * speed,
+          life: 0.75
+        });
+      }
+    }
+
+    function spawnKoiFish(variety, x, z, fromAir = true) {
+      const mesh = createArticulatedKoiMesh(variety);
+      const scale = 0.78 + Math.random() * 0.34;
+      mesh.scale.setScalar(scale);
+
+      const targetDepth = -0.85 - Math.random() * 1.65;
+      const heading = Math.random() * Math.PI * 2;
+
+      if (fromAir) {
+        mesh.position.set(x, 3.6, z);
+      } else {
+        mesh.position.set(x, targetDepth, z);
+      }
+      mesh.rotation.y = heading;
+
+      koiScene.add(mesh);
+      koiScene.add(mesh.userData.shadowMesh);
+
+      const fishObj = {
+        variety,
+        mesh,
+        x,
+        y: fromAir ? 3.6 : targetDepth,
+        z,
+        vy: fromAir ? -6.5 : 0,
+        targetDepth,
+        heading,
+        targetHeading: heading,
+        speed: 2.2 + Math.random() * 1.4,
+        baseSpeed: 2.2 + Math.random() * 1.4,
+        swimPhase: Math.random() * Math.PI * 2,
+        wanderTimer: 1.5 + Math.random() * 3.0,
+        state: fromAir ? 'falling' : 'swimming',
+        splashed: !fromAir,
+        scale
+      };
+
+      APP_STATE.koi.fishList.push(fishObj);
+      updateKoiCountBadge();
+      return fishObj;
+    }
+
+    function updateKoiCountBadge() {
+      const badge = document.getElementById('koi-count-badge');
+      if (badge) {
+        badge.textContent = `${APP_STATE.koi.fishList.length} Koi`;
+      }
+    }
+
+    const varietiesList = ['kohaku', 'showa', 'ogon', 'platinum'];
+    for (let i = 0; i < 16; i++) {
+      const v = varietiesList[i % 4];
+      const rx = (Math.random() - 0.5) * 26;
+      const rz = (Math.random() - 0.5) * 16;
+      spawnKoiFish(v, rx, rz, false);
+    }
+
+    const butterflyGroup = new THREE.Group();
+    const butterflies = [];
+    const wingShape = new THREE.Shape();
+    wingShape.moveTo(0, 0);
+    wingShape.bezierCurveTo(0.35, 0.38, 0.45, 0.05, 0.05, -0.05);
+    wingShape.bezierCurveTo(0.32, -0.18, 0.25, -0.42, 0, -0.15);
+    const wingGeo = new THREE.ShapeGeometry(wingShape, 8);
+
+    for (let i = 0; i < 12; i++) {
+      const bRoot = new THREE.Group();
+      const bCol = i % 3 === 0 ? 0xf9a8d4 : (i % 3 === 1 ? 0xfef08a : 0xd8b4fe);
+      const wMat = new THREE.MeshBasicMaterial({
+        color: bCol,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.88
+      });
+      const leftW = new THREE.Mesh(wingGeo, wMat);
+      leftW.rotation.x = Math.PI / 2;
+      const rightW = new THREE.Mesh(wingGeo, wMat);
+      rightW.rotation.x = Math.PI / 2;
+      rightW.scale.x = -1;
+      bRoot.add(leftW, rightW);
+
+      const angle = (i / 12) * Math.PI * 2;
+      bRoot.position.set(Math.cos(angle) * 9, 1.4 + Math.random() * 1.8, Math.sin(angle) * 6);
+      butterflyGroup.add(bRoot);
+      butterflies.push({
+        group: bRoot,
+        leftW,
+        rightW,
+        angle,
+        radiusX: 6 + Math.random() * 9,
+        radiusZ: 4 + Math.random() * 6,
+        speed: 0.35 + Math.random() * 0.35,
+        flapPhase: Math.random() * 10
+      });
+    }
+    koiScene.add(butterflyGroup);
+
+    const RAIN_COUNT = 220;
+    const rainPositions = new Float32Array(RAIN_COUNT * 6);
+    for (let i = 0; i < RAIN_COUNT; i++) {
+      const rx = (Math.random() - 0.5) * 44;
+      const ry = Math.random() * 28;
+      const rz = (Math.random() - 0.5) * 30;
+      rainPositions[i * 6 + 0] = rx;
+      rainPositions[i * 6 + 1] = ry;
+      rainPositions[i * 6 + 2] = rz;
+      rainPositions[i * 6 + 3] = rx - 0.25;
+      rainPositions[i * 6 + 4] = ry - 1.3;
+      rainPositions[i * 6 + 5] = rz;
+    }
+    const rainGeo = new THREE.BufferGeometry();
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+    const rainMat = new THREE.LineBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.48 });
+    const rainLines = new THREE.LineSegments(rainGeo, rainMat);
+    rainLines.visible = false;
+    koiScene.add(rainLines);
+
+    const vortexRingGeo = new THREE.RingGeometry(0.45, 2.4, 36);
+    vortexRingGeo.rotateX(-Math.PI / 2);
+    const vortexRingMat = new THREE.MeshBasicMaterial({
+      color: 0x99f6e4,
+      transparent: true,
+      opacity: 0.38,
+      side: THREE.DoubleSide,
+      wireframe: true
+    });
+    const vortexIndicator = new THREE.Mesh(vortexRingGeo, vortexRingMat);
+    vortexIndicator.position.y = 0.04;
+    vortexIndicator.visible = false;
+    koiScene.add(vortexIndicator);
+
+    // =========================================================================
+    // 6. REALM 2: "NORTHBOUND" — NORDIC FJORD & DETAILED VIKING LONGSHIP
+    // =========================================================================
+    const nbScene = new THREE.Scene();
+    nbScene.background = new THREE.Color(0xdbeafe);
+    nbScene.fog = new THREE.FogExp2(0xcbd5e1, 0.0042);
+
+    const nbCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 900);
+
+    const reflectionRT = new THREE.WebGLRenderTarget(512, 512, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat
+    });
+    const reflectionCamera = nbCamera.clone();
+
+    const nbHemiLight = new THREE.HemisphereLight(0xfde68a, 0x1e3a4c, 0.85);
+    nbScene.add(nbHemiLight);
+
+    const nbSunLight = new THREE.DirectionalLight(0xffedd5, 1.45);
+    nbSunLight.position.set(85, 95, -140);
+    nbSunLight.castShadow = true;
+    nbSunLight.shadow.mapSize.set(1024, 1024);
+    nbSunLight.shadow.camera.near = 10;
+    nbSunLight.shadow.camera.far = 360;
+    const dNb = 45;
+    nbSunLight.shadow.camera.left = -dNb;
+    nbSunLight.shadow.camera.right = dNb;
+    nbSunLight.shadow.camera.top = dNb;
+    nbSunLight.shadow.camera.bottom = -dNb;
+    nbScene.add(nbSunLight);
+
+    const skyGeo = new THREE.SphereGeometry(460, 32, 24);
+    const skyUniforms = {
+      uTime: { value: 0 },
+      uTopColor: { value: new THREE.Color(0x3b6998) },
+      uHorizonColor: { value: new THREE.Color(0xfde68a) },
+      uSunDir: { value: new THREE.Vector3(0.4, 0.45, -0.75).normalize() },
+      uMoonlightMix: { value: 0.0 }
+    };
+    const skyMat = new THREE.ShaderMaterial({
+      uniforms: skyUniforms,
+      side: THREE.BackSide,
+      depthWrite: false,
+      vertexShader: `
+        varying vec3 vWorldDir;
+        void main() {
+          vWorldDir = normalize(position);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uTopColor;
+        uniform vec3 uHorizonColor;
+        uniform vec3 uSunDir;
+        uniform float uMoonlightMix;
+        varying vec3 vWorldDir;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+          float h = clamp(vWorldDir.y, 0.0, 1.0);
+          vec3 col = mix(uHorizonColor, uTopColor, pow(h, 0.55));
+
+          float sunDot = max(dot(normalize(vWorldDir), normalize(uSunDir)), 0.0);
+          col += vec3(1.0, 0.92, 0.78) * pow(sunDot, 18.0) * 0.42;
+          col += vec3(1.0, 0.98, 0.92) * smoothstep(0.996, 0.9992, sunDot) * 0.95;
+
+          if (uMoonlightMix > 0.01 && h > 0.05) {
+            vec2 starUv = floor(vWorldDir.xz / (vWorldDir.y + 0.15) * 95.0);
+            float star = step(0.992, hash(starUv));
+            col += vec3(0.95, 0.97, 1.0) * star * uMoonlightMix * h;
+
+            float wave1 = sin(vWorldDir.x * 6.0 + uTime * 0.45 + sin(vWorldDir.z * 4.0)) * 0.5 + 0.5;
+            float curtain = exp(-pow((h - 0.35 - wave1 * 0.12) * 7.5, 2.0));
+            vec3 auroraCol = mix(vec3(0.18, 0.88, 0.68), vec3(0.85, 0.55, 0.95), wave1);
+            col += auroraCol * curtain * uMoonlightMix * 0.55;
+          }
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `
+    });
+    const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+    nbScene.add(skyMesh);
+
+    function getFjordCenterX(z) {
+      return Math.sin(z * 0.011) * 34.0 + Math.cos(z * 0.0055) * 18.0;
+    }
+
+    function getFjordChannelHalfWidth(z) {
+      return 27.0 + Math.sin(z * 0.017) * 5.0;
+    }
+
+    function sampleFjordHeight(x, z) {
+      const cx = getFjordCenterX(z);
+      const hw = getFjordChannelHalfWidth(z);
+      const dist = Math.abs(x - cx);
+
+      const n1 = Math.sin(x * 0.055 + z * 0.045) * Math.cos(x * 0.035 - z * 0.06);
+      const n2 = Math.sin(x * 0.14 - z * 0.11) * 0.5 + Math.cos(x * 0.22 + z * 0.19) * 0.5;
+      const crag = Math.abs(Math.sin(x * 0.09 + z * 0.08)) * 8.5;
+
+      if (dist < hw * 0.68) {
+        return -15.5 + (dist / (hw * 0.68)) * 5.5 + n1 * 1.2;
+      } else if (dist < hw) {
+        const t = (dist - hw * 0.68) / (hw * 0.32);
+        const s = t * t * (3 - 2 * t);
+        return -10.0 + s * 11.2 + n2 * 0.85;
+      } else {
+        const landDist = dist - hw;
+        const slope = Math.pow(Math.min(landDist / 52.0, 1.6), 1.38) * 66.0;
+        return 1.6 + slope + (n1 * 4.5 + n2 * 2.2 + crag) * Math.min(landDist / 18.0, 1.0);
+      }
+    }
+
+    const rockTextures = createRockTextures();
+    const terrainGeo = new THREE.PlaneGeometry(360, 560, 180, 240);
+    terrainGeo.rotateX(-Math.PI / 2);
+    const tPos = terrainGeo.attributes.position;
+    const tColors = new Float32Array(tPos.count * 3);
+
+    const cDeepBed = new THREE.Color(0x07222b);
+    const cShallowShelf = new THREE.Color(0x1f4e54);
+    const cShoreStone = new THREE.Color(0x475569);
+    const cForestMoss = new THREE.Color(0x2d4a36);
+    const cCliffRock = new THREE.Color(0x3f4952);
+    const cSnowPeak = new THREE.Color(0xe2e8f0);
+
+    for (let i = 0; i < tPos.count; i++) {
+      const vx = tPos.getX(i);
+      const vz = tPos.getZ(i);
+      const vy = sampleFjordHeight(vx, vz);
+      tPos.setY(i, vy);
+
+      const col = new THREE.Color();
+      if (vy < -4.0) {
+        col.copy(cDeepBed);
+      } else if (vy < 0.3) {
+        col.copy(cShallowShelf).lerp(cShoreStone, (vy + 4.0) / 4.3);
+      } else if (vy < 8.5) {
+        col.copy(cShoreStone).lerp(cForestMoss, (vy - 0.3) / 8.2);
+      } else if (vy < 44.0) {
+        col.copy(cForestMoss).lerp(cCliffRock, Math.min(1, (vy - 8.5) / 22.0));
+      } else {
+        col.copy(cCliffRock).lerp(cSnowPeak, Math.min(1, (vy - 44.0) / 24.0));
+      }
+      tColors[i * 3 + 0] = col.r;
+      tColors[i * 3 + 1] = col.g;
+      tColors[i * 3 + 2] = col.b;
+    }
+    terrainGeo.setAttribute('color', new THREE.BufferAttribute(tColors, 3));
+    terrainGeo.computeVertexNormals();
+
+    const terrainMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      map: rockTextures.map,
+      bumpMap: rockTextures.bumpMap,
+      bumpScale: 0.85,
+      roughness: 0.88,
+      metalness: 0.06
+    });
+    const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+    terrainMesh.receiveShadow = true;
+    nbScene.add(terrainMesh);
+
+    const TREE_COUNT = 520;
+    const trunkGeo = new THREE.CylinderGeometry(0.14, 0.34, 3.2, 6);
+    trunkGeo.translate(0, 1.6, 0);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9 });
+
+    const foliageGeo = new THREE.ConeGeometry(1.45, 5.6, 7);
+    foliageGeo.translate(0, 4.2, 0);
+    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x1b4332, roughness: 0.82 });
+
+    const foliageTopGeo = new THREE.ConeGeometry(1.05, 4.2, 7);
+    foliageTopGeo.translate(0, 6.4, 0);
+
+    const instTrunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREE_COUNT);
+    const instFoliage1 = new THREE.InstancedMesh(foliageGeo, foliageMat, TREE_COUNT);
+    const instFoliage2 = new THREE.InstancedMesh(foliageTopGeo, foliageMat, TREE_COUNT);
+    instTrunks.castShadow = true;
+    instFoliage1.castShadow = true;
+
+    const dummy = new THREE.Object3D();
+    let placedTrees = 0;
+    let seed = 1337;
+    function seededRand() {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    }
+
+    for (let attempt = 0; attempt < 2200 && placedTrees < TREE_COUNT; attempt++) {
+      const tz = (seededRand() - 0.5) * 500;
+      const cx = getFjordCenterX(tz);
+      const hw = getFjordChannelHalfWidth(tz);
+      const side = seededRand() > 0.5 ? 1 : -1;
+      const tx = cx + side * (hw + 4.5 + seededRand() * 48);
+      const ty = sampleFjordHeight(tx, tz);
+
+      if (ty > 2.2 && ty < 34.0) {
+        dummy.position.set(tx, ty - 0.25, tz);
+        const s = 0.75 + seededRand() * 0.85;
+        dummy.scale.set(s, s * (0.9 + seededRand() * 0.35), s);
+        dummy.rotation.y = seededRand() * Math.PI * 2;
+        dummy.updateMatrix();
+        instTrunks.setMatrixAt(placedTrees, dummy.matrix);
+        instFoliage1.setMatrixAt(placedTrees, dummy.matrix);
+        instFoliage2.setMatrixAt(placedTrees, dummy.matrix);
+        placedTrees++;
+      }
+    }
+    nbScene.add(instTrunks, instFoliage1, instFoliage2);
+
+    const ROCK_COUNT = 160;
+    const boulderGeo = new THREE.DodecahedronGeometry(1.4, 1);
+    const boulderMat = new THREE.MeshStandardMaterial({
+      color: 0x475569,
+      bumpMap: rockTextures.bumpMap,
+      bumpScale: 0.4,
+      roughness: 0.85
+    });
+    const instRocks = new THREE.InstancedMesh(boulderGeo, boulderMat, ROCK_COUNT);
+    for (let i = 0; i < ROCK_COUNT; i++) {
+      const rz = (seededRand() - 0.5) * 500;
+      const cx = getFjordCenterX(rz);
+      const hw = getFjordChannelHalfWidth(rz);
+      const side = (i % 2 === 0) ? 1 : -1;
+      const rx = cx + side * (hw - 1.5 + seededRand() * 14);
+      const ry = sampleFjordHeight(rx, rz);
+      dummy.position.set(rx, ry - 0.3, rz);
+      dummy.scale.set(0.8 + seededRand() * 1.8, 0.5 + seededRand() * 1.2, 0.8 + seededRand() * 1.6);
+      dummy.rotation.set(seededRand() * 2, seededRand() * 3, seededRand() * 2);
+      dummy.updateMatrix();
+      instRocks.setMatrixAt(i, dummy.matrix);
+    }
+    nbScene.add(instRocks);
+
+    const waterfalls = [];
+    const wfConfigs = [
+      { z: 35, side: -1 },
+      { z: -45, side: 1 },
+      { z: -135, side: -1 }
+    ];
+    wfConfigs.forEach((cfg) => {
+      const cx = getFjordCenterX(cfg.z);
+      const hw = getFjordChannelHalfWidth(cfg.z);
+      const wx = cx + cfg.side * (hw + 12);
+      const wy = sampleFjordHeight(wx, cfg.z);
+
+      const wfGroup = new THREE.Group();
+      const fallGeo = new THREE.PlaneGeometry(4.2, Math.max(18, wy + 4), 8, 24);
+      const fallMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.72,
+        side: THREE.DoubleSide
+      });
+      const fallMesh = new THREE.Mesh(fallGeo, fallMat);
+      fallMesh.position.set(wx, wy * 0.48, cfg.z);
+      fallMesh.rotation.y = cfg.side > 0 ? -Math.PI * 0.45 : Math.PI * 0.45;
+      fallMesh.rotation.x = cfg.side > 0 ? 0.24 : -0.24;
+      wfGroup.add(fallMesh);
+
+      const mistGeo = new THREE.SphereGeometry(3.4, 12, 10);
+      const mistMat = new THREE.MeshBasicMaterial({
+        color: 0xf1f5f9,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false
+      });
+      const mistMesh = new THREE.Mesh(mistGeo, mistMat);
+      mistMesh.position.set(cx + cfg.side * (hw + 2.5), 1.2, cfg.z);
+      mistMesh.scale.set(1.6, 0.65, 1.6);
+      wfGroup.add(mistMesh);
+
+      nbScene.add(wfGroup);
+      waterfalls.push({ fallMesh, mistMesh });
+    });
+
+    const settlementZ = [65, -15, -95, -170];
+    settlementZ.forEach((sz, idx) => {
+      const side = idx % 2 === 0 ? 1 : -1;
+      const cx = getFjordCenterX(sz);
+      const hw = getFjordChannelHalfWidth(sz);
+      const sx = cx + side * (hw + 3.2);
+      const sy = Math.max(1.2, sampleFjordHeight(sx, sz));
+
+      const village = new THREE.Group();
+      village.position.set(sx, sy, sz);
+      village.rotation.y = side > 0 ? -Math.PI * 0.5 : Math.PI * 0.5;
+
+      const pierGeo = new THREE.BoxGeometry(2.4, 0.25, 7.5);
+      const pierMat = new THREE.MeshStandardMaterial({ color: 0x4a321f, roughness: 0.9 });
+      const pier = new THREE.Mesh(pierGeo, pierMat);
+      pier.position.set(0, -sy + 0.6, 4.2);
+      village.add(pier);
+
+      const houseGeo = new THREE.BoxGeometry(4.6, 2.5, 6.2);
+      const houseMat = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.85 });
+      const house = new THREE.Mesh(houseGeo, houseMat);
+      house.position.set(0, 1.2, -1.5);
+      house.castShadow = true;
+      village.add(house);
+
+      const roofGeo = new THREE.ConeGeometry(4.2, 2.2, 4);
+      roofGeo.rotateY(Math.PI / 4);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x283618, roughness: 0.92 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.set(0, 3.4, -1.5);
+      roof.scale.set(1.05, 1, 1.35);
+      village.add(roof);
+
+      const winGeo = new THREE.PlaneGeometry(0.65, 0.55);
+      const winMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+      const win1 = new THREE.Mesh(winGeo, winMat);
+      win1.position.set(-1.1, 1.3, 1.62);
+      const win2 = new THREE.Mesh(winGeo, winMat);
+      win2.position.set(1.1, 1.3, 1.62);
+      village.add(win1, win2);
+
+      nbScene.add(village);
+    });
+
+    // =========================================================================
+    // 7. THE VIKING LONGSHIP ("DRAKKAR MALKIN · NOOR-E-CHASHM")
+    // =========================================================================
+    const woodTextures = createWoodTextures();
+    const sailTexture = createSailTexture();
+
+    const longship = new THREE.Group();
+    nbScene.add(longship);
+
+    const woodMat = new THREE.MeshStandardMaterial({
+      map: woodTextures.map,
+      bumpMap: woodTextures.bumpMap,
+      bumpScale: 0.08,
+      roughness: 0.68,
+      metalness: 0.06,
+      side: THREE.DoubleSide
+    });
+    const darkTimberMat = new THREE.MeshStandardMaterial({
+      color: 0x321e10,
+      bumpMap: woodTextures.bumpMap,
+      bumpScale: 0.06,
+      roughness: 0.72
+    });
+
+    function getHullHalfBeam(z) {
+      const u = Math.min(1.0, Math.abs(z) / 8.0);
+      return Math.max(0.08, 1.95 * (1.0 - Math.pow(u, 2.15)));
+    }
+    function getHullSheerY(z) {
+      const u = Math.min(1.0, Math.abs(z) / 8.0);
+      return 0.68 + 0.85 * Math.pow(u, 2.3);
+    }
+
+    const strakeCount = 8;
+    const zSegs = 36;
+    for (let side of [-1, 1]) {
+      const hullGeo = new THREE.BufferGeometry();
+      const verts = [];
+      const uvs = [];
+      const indices = [];
+
+      for (let iz = 0; iz <= zSegs; iz++) {
+        const tz = iz / zSegs;
+        const z = (tz - 0.5) * 16.0;
+        const maxW = getHullHalfBeam(z);
+        const sheerY = getHullSheerY(z);
+        const keelY = -0.58 + 0.52 * Math.pow(Math.abs(z) / 8.0, 2.6);
+
+        for (let is = 0; is <= strakeCount; is++) {
+          const ts = is / strakeCount;
+          const clinkerLap = (is % 2 === 0) ? 0.025 : 0.0;
+          const x = side * (Math.sin(ts * Math.PI * 0.5) * maxW + clinkerLap * Math.sin(ts * Math.PI));
+          const y = keelY + (sheerY - keelY) * Math.pow(ts, 0.88);
+          verts.push(x, y, z);
+          uvs.push(tz * 4.0, ts * 2.0);
+        }
+      }
+
+      const row = strakeCount + 1;
+      for (let iz = 0; iz < zSegs; iz++) {
+        for (let is = 0; is < strakeCount; is++) {
+          const a = iz * row + is;
+          const b = (iz + 1) * row + is;
+          const c = (iz + 1) * row + (is + 1);
+          const d = iz * row + (is + 1);
+          if (side > 0) {
+            indices.push(a, b, d, b, c, d);
+          } else {
+            indices.push(a, d, b, b, d, c);
+          }
+        }
+      }
+      hullGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      hullGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      hullGeo.setIndex(indices);
+      hullGeo.computeVertexNormals();
+
+      const sideMesh = new THREE.Mesh(hullGeo, woodMat);
+      sideMesh.castShadow = true;
+      sideMesh.receiveShadow = true;
+      longship.add(sideMesh);
+    }
+
+    const deckGeo = new THREE.BufferGeometry();
+    const deckVerts = [];
+    const deckUvs = [];
+    const deckIdx = [];
+    for (let iz = 0; iz <= zSegs; iz++) {
+      const tz = iz / zSegs;
+      const z = (tz - 0.5) * 15.4;
+      const w = Math.max(0.05, getHullHalfBeam(z) * 0.78);
+      const y = 0.08 + 0.22 * Math.pow(Math.abs(z) / 8.0, 2.2);
+      deckVerts.push(-w, y, z, w, y, z);
+      deckUvs.push(0, tz * 6, 1, tz * 6);
+      if (iz < zSegs) {
+        const i0 = iz * 2;
+        deckIdx.push(i0, i0 + 1, i0 + 2, i0 + 1, i0 + 3, i0 + 2);
+      }
+    }
+    deckGeo.setAttribute('position', new THREE.Float32BufferAttribute(deckVerts, 3));
+    deckGeo.setAttribute('uv', new THREE.Float32BufferAttribute(deckUvs, 2));
+    deckGeo.setIndex(deckIdx);
+    deckGeo.computeVertexNormals();
+    const deckMesh = new THREE.Mesh(deckGeo, woodMat);
+    deckMesh.receiveShadow = true;
+    longship.add(deckMesh);
+
+    const benchZPositions = [-3.6, -1.2, 1.2, 3.6];
+    for (let rz = -6.0; rz <= 6.0; rz += 1.2) {
+      const w = getHullHalfBeam(rz);
+      const ribGeo = new THREE.BoxGeometry(w * 1.9, 0.12, 0.12);
+      const rib = new THREE.Mesh(ribGeo, darkTimberMat);
+      rib.position.set(0, 0.14, rz);
+      longship.add(rib);
+    }
+    benchZPositions.forEach((bz) => {
+      const w = getHullHalfBeam(bz);
+      const benchGeo = new THREE.BoxGeometry(w * 1.88, 0.09, 0.42);
+      const bench = new THREE.Mesh(benchGeo, woodMat);
+      bench.position.set(0, 0.44, bz);
+      bench.castShadow = true;
+      longship.add(bench);
+    });
+
+    const prowCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0.1, -7.2),
+      new THREE.Vector3(0, 1.35, -8.1),
+      new THREE.Vector3(0, 2.75, -8.55),
+      new THREE.Vector3(0, 3.65, -8.15),
+      new THREE.Vector3(0, 3.95, -8.65)
+    ]);
+    const prowNeckGeo = new THREE.TubeGeometry(prowCurve, 20, 0.18, 8, false);
+    const prowNeck = new THREE.Mesh(prowNeckGeo, darkTimberMat);
+    prowNeck.castShadow = true;
+    longship.add(prowNeck);
+
+    const dragonHead = new THREE.Group();
+    dragonHead.position.set(0, 3.95, -8.65);
+    const snoutGeo = new THREE.ConeGeometry(0.26, 0.85, 6);
+    snoutGeo.rotateX(-Math.PI / 2);
+    const snout = new THREE.Mesh(snoutGeo, darkTimberMat);
+    snout.position.set(0, 0.06, -0.35);
+    const jawGeo = new THREE.ConeGeometry(0.18, 0.68, 6);
+    jawGeo.rotateX(-Math.PI / 2.3);
+    const jaw = new THREE.Mesh(jawGeo, darkTimberMat);
+    jaw.position.set(0, -0.12, -0.28);
+    const dEyeGeo = new THREE.SphereGeometry(0.05, 8, 8);
+    const dEyeMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+    const dEyeL = new THREE.Mesh(dEyeGeo, dEyeMat);
+    dEyeL.position.set(0.14, 0.12, -0.15);
+    const dEyeR = new THREE.Mesh(dEyeGeo, dEyeMat);
+    dEyeR.position.set(-0.14, 0.12, -0.15);
+    dragonHead.add(snout, jaw, dEyeL, dEyeR);
+    longship.add(dragonHead);
+
+    const sternCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0.1, 7.2),
+      new THREE.Vector3(0, 1.4, 8.05),
+      new THREE.Vector3(0, 2.7, 8.35),
+      new THREE.Vector3(0, 3.3, 7.85)
+    ]);
+    const sternPost = new THREE.Mesh(new THREE.TubeGeometry(sternCurve, 16, 0.15, 8, false), darkTimberMat);
+    longship.add(sternPost);
+
+    const rudderGroup = new THREE.Group();
+    rudderGroup.position.set(0.95, 0.45, 6.2);
+    const rudderBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.65, 0.38), woodMat);
+    rudderBlade.position.y = -0.45;
+    rudderGroup.add(rudderBlade);
+    longship.add(rudderGroup);
+
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.19, 9.2, 12), woodMat);
+    mast.position.set(0, 4.6, -0.2);
+    mast.castShadow = true;
+    longship.add(mast);
+
+    const yardarm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6.6, 10), darkTimberMat);
+    yardarm.rotation.z = Math.PI / 2;
+    yardarm.position.set(0, 7.8, -0.35);
+    longship.add(yardarm);
+
+    const sailGeo = new THREE.PlaneGeometry(6.2, 5.4, 20, 16);
+    sailGeo.userData.basePos = sailGeo.attributes.position.array.slice();
+    const sailMat = new THREE.MeshStandardMaterial({
+      map: sailTexture,
+      roughness: 0.78,
+      side: THREE.DoubleSide
+    });
+    const sailMesh = new THREE.Mesh(sailGeo, sailMat);
+    sailMesh.position.set(0, 5.1, -0.55);
+    sailMesh.castShadow = true;
+    longship.add(sailMesh);
+
+    const ropeMat = new THREE.LineBasicMaterial({ color: 0xd6c7b2 });
+    const ropePairs = [
+      [[0, 8.4, -0.2], [0, 1.5, -7.5]],
+      [[0, 8.4, -0.2], [0, 1.5, 7.4]],
+      [[0, 8.2, -0.2], [-1.85, 0.7, -1.5]],
+      [[0, 8.2, -0.2], [1.85, 0.7, -1.5]],
+      [[0, 8.2, -0.2], [-1.85, 0.7, 1.2]],
+      [[0, 8.2, -0.2], [1.85, 0.7, 1.2]]
+    ];
+    ropePairs.forEach(([p1, p2]) => {
+      const rGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(...p1),
+        new THREE.Vector3(...p2)
+      ]);
+      longship.add(new THREE.Line(rGeo, ropeMat));
+    });
+
+    const shieldGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.05, 16);
+    shieldGeo.rotateZ(Math.PI / 2);
+    const bossGeo = new THREE.SphereGeometry(0.11, 8, 8);
+    const bossMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.75, roughness: 0.25 });
+
+    for (let sz = -4.8; sz <= 4.8; sz += 1.2) {
+      const w = getHullHalfBeam(sz);
+      const sy = getHullSheerY(sz) - 0.08;
+      for (let side of [-1, 1]) {
+        const sMat = new THREE.MeshStandardMaterial({
+          color: (Math.round(sz * 10) % 2 === 0) ? 0x7a1c30 : 0x1e3a5f,
+          roughness: 0.6
+        });
+        const shield = new THREE.Mesh(shieldGeo, sMat);
+        shield.position.set(side * (w + 0.04), sy, sz);
+        const boss = new THREE.Mesh(bossGeo, bossMat);
+        boss.position.x = side * 0.04;
+        shield.add(boss);
+        longship.add(shield);
+      }
+    }
+
+    const barrelGeo = new THREE.CylinderGeometry(0.24, 0.26, 0.62, 10);
+    [[-0.55, 0.38, -0.8], [0.58, 0.38, -0.7], [-0.45, 0.38, 0.5]].forEach(([bx, by, bz]) => {
+      const b = new THREE.Mesh(barrelGeo, darkTimberMat);
+      b.position.set(bx, by, bz);
+      longship.add(b);
+    });
+
+    const lanternMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+    const lanternPositions = [[0, 2.35, -7.85], [0, 2.15, 7.65]];
+    lanternPositions.forEach(([lx, ly, lz]) => {
+      const lMesh = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), lanternMat);
+      lMesh.position.set(lx, ly, lz);
+      const pLight = new THREE.PointLight(0xffb74d, 1.35, 16);
+      pLight.position.set(lx, ly, lz);
+      longship.add(lMesh, pLight);
+    });
+
+    const rowers = [];
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xe6bea5, roughness: 0.65 });
+    const tunicColors = [0x6b1d2f, 0x1e3a4c, 0x3f4f3a, 0x4a3525];
+
+    benchZPositions.forEach((bz, rowIdx) => {
+      const hullW = getHullHalfBeam(bz);
+      const sheerY = getHullSheerY(bz);
+
+      for (let side of [-1, 1]) {
+        const seatX = side * 0.62;
+        const seatY = 0.48;
+
+        const rowerRoot = new THREE.Group();
+        rowerRoot.position.set(seatX, seatY, bz);
+
+        const hips = new THREE.Mesh(
+          new THREE.BoxGeometry(0.34, 0.16, 0.32),
+          new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.85 })
+        );
+        hips.position.set(0, 0.06, 0);
+        const calves = new THREE.Mesh(
+          new THREE.BoxGeometry(0.30, 0.34, 0.16),
+          new THREE.MeshStandardMaterial({ color: 0x3f2e21, roughness: 0.85 })
+        );
+        calves.position.set(0, -0.14, 0.24);
+        rowerRoot.add(hips, calves);
+
+        const torsoPivot = new THREE.Group();
+        torsoPivot.position.set(0, 0.14, 0);
+        const tunicMat = new THREE.MeshStandardMaterial({
+          color: tunicColors[(rowIdx + (side > 0 ? 1 : 0)) % tunicColors.length],
+          roughness: 0.78
+        });
+        const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.15, 0.56, 8), tunicMat);
+        torsoMesh.position.y = 0.28;
+
+        const cloakMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.22, 0.20, 0.18, 8),
+          new THREE.MeshStandardMaterial({ color: 0x4a3b32, roughness: 0.92 })
+        );
+        cloakMesh.position.y = 0.48;
+
+        const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.135, 10, 10), skinMat);
+        headMesh.position.y = 0.68;
+        const helmMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.142, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.58),
+          new THREE.MeshStandardMaterial({ color: 0x52525b, metalness: 0.5, roughness: 0.45 })
+        );
+        helmMesh.position.y = 0.70;
+
+        const armGroup = new THREE.Group();
+        armGroup.position.set(0, 0.46, 0);
+        const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.52, 6), tunicMat);
+        leftArm.rotation.x = Math.PI / 2;
+        leftArm.position.set(-0.16, 0, 0.24);
+        const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.52, 6), tunicMat);
+        rightArm.rotation.x = Math.PI / 2;
+        rightArm.position.set(0.16, 0, 0.24);
+        const hands = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.07, 0.08), skinMat);
+        hands.position.set(0, 0, 0.48);
+        armGroup.add(leftArm, rightArm, hands);
+
+        torsoPivot.add(torsoMesh, cloakMesh, headMesh, helmMesh, armGroup);
+        rowerRoot.add(torsoPivot);
+        longship.add(rowerRoot);
+
+        const oarPivot = new THREE.Group();
+        oarPivot.position.set(side * (hullW - 0.04), sheerY - 0.06, bz);
+
+        const oarShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.028, 4.1, 8), woodMat);
+        oarShaft.rotation.z = side * (Math.PI / 2);
+        oarShaft.position.x = side * 1.35;
+
+        const oarBlade = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.025, 0.18), woodMat);
+        oarBlade.position.x = side * 3.25;
+
+        const bladeContactNode = new THREE.Object3D();
+        bladeContactNode.position.set(side * 3.35, 0, 0);
+
+        oarPivot.add(oarShaft, oarBlade, bladeContactNode);
+        longship.add(oarPivot);
+
+        rowers.push({
+          side,
+          rowIdx,
+          torsoPivot,
+          armGroup,
+          oarPivot,
+          bladeContactNode,
+          lastTrailTime: 0
+        });
+      }
+    });
+
+    function createStandingViking(x, y, z, cloakColor) {
+      const v = new THREE.Group();
+      v.position.set(x, y, z);
+      const legs = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.13, 0.11, 0.65, 8),
+        new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.85 })
+      );
+      legs.position.y = 0.32;
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.16, 0.62, 8),
+        new THREE.MeshStandardMaterial({ color: cloakColor, roughness: 0.75 })
+      );
+      body.position.y = 0.92;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.135, 10, 10), skinMat);
+      head.position.y = 1.35;
+      v.add(legs, body, head);
+      return v;
+    }
+    longship.add(createStandingViking(0.32, 0.22, 5.8, 0x6b1d2f));
+    longship.add(createStandingViking(0.0, 0.24, -5.6, 0x1e3a4c));
+
+    // =========================================================================
+    // 8. FJORD WATER SHADER (PLANAR REFLECTION, REFRACTION, FRESNEL, DEPTH)
+    // =========================================================================
+    const fjordWaterGeo = new THREE.PlaneGeometry(380, 560, 160, 220);
+    fjordWaterGeo.rotateX(-Math.PI / 2);
+
+    const fwPos = fjordWaterGeo.attributes.position;
+    const fwDepthAttr = new Float32Array(fwPos.count);
+    for (let i = 0; i < fwPos.count; i++) {
+      const wx = fwPos.getX(i);
+      const wz = fwPos.getZ(i);
+      const bedY = sampleFjordHeight(wx, wz);
+      fwDepthAttr[i] = Math.max(0.0, Math.min(1.0, (-bedY) / 12.0));
+    }
+    fjordWaterGeo.setAttribute('aDepthFactor', new THREE.BufferAttribute(fwDepthAttr, 1));
+
+    const fjordWaterUniforms = {
+      uTime: { value: 0 },
+      uReflectionMap: { value: reflectionRT.texture },
+      uSunDir: { value: new THREE.Vector3(0.4, 0.45, -0.75).normalize() },
+      uSunColor: { value: new THREE.Color(0xfffbeb) },
+      uDeepWaterColor: { value: new THREE.Color(0x062c38) },
+      uShallowWaterColor: { value: new THREE.Color(0x167874) },
+      uFogColor: { value: new THREE.Color(0xcbd5e1) },
+      uShipPos: { value: new THREE.Vector3(0, 0, 110) },
+      uShipHeading: { value: 0 },
+      uShipSpeed: { value: 4.2 }
+    };
+
+    const fjordWaterMat = new THREE.ShaderMaterial({
+      uniforms: fjordWaterUniforms,
+      transparent: true,
+      vertexShader: `
+        attribute float aDepthFactor;
+        uniform float uTime;
+        varying vec3 vWorldPos;
+        varying vec4 vScreenPos;
+        varying float vDepth;
+        varying float vWaveH;
+
+        void main() {
+          vec3 pos = position;
+          float w1 = sin(pos.x * 0.28 + pos.z * 0.22 + uTime * 1.65) * 0.14;
+          float w2 = cos(pos.x * 0.52 - pos.z * 0.38 + uTime * 2.15) * 0.08;
+          float w3 = sin(pos.z * 0.85 - uTime * 2.8) * 0.04;
+          pos.y += (w1 + w2 + w3) * clamp(aDepthFactor + 0.15, 0.0, 1.0);
+
+          vWaveH = pos.y;
+          vDepth = aDepthFactor;
+          vec4 wp = modelMatrix * vec4(pos, 1.0);
+          vWorldPos = wp.xyz;
+          vec4 clip = projectionMatrix * viewMatrix * wp;
+          vScreenPos = clip;
+          gl_Position = clip;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform sampler2D uReflectionMap;
+        uniform vec3 uSunDir;
+        uniform vec3 uSunColor;
+        uniform vec3 uDeepWaterColor;
+        uniform vec3 uShallowWaterColor;
+        uniform vec3 uFogColor;
+        uniform vec3 uShipPos;
+        uniform float uShipHeading;
+        uniform float uShipSpeed;
+
+        varying vec3 vWorldPos;
+        varying vec4 vScreenPos;
+        varying float vDepth;
+        varying float vWaveH;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                     mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+        }
+
+        void main() {
+          vec2 p = vWorldPos.xz * 0.65;
+          float n1 = noise(p + vec2(uTime * 0.55, -uTime * 0.42));
+          float n2 = noise(p * 2.1 - vec2(uTime * 0.48, uTime * 0.62));
+          vec3 N = normalize(vec3((n1 - 0.5) * 0.26, 1.0, (n2 - 0.5) * 0.26));
+
+          vec3 V = normalize(cameraPosition - vWorldPos);
+          float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.4);
+
+          vec2 ndc = (vScreenPos.xy / vScreenPos.w) * 0.5 + 0.5;
+          vec2 reflUv = clamp(vec2(ndc.x, 1.0 - ndc.y) + N.xz * 0.035, 0.01, 0.99);
+          vec3 reflectionCol = texture2D(uReflectionMap, reflUv).rgb;
+
+          vec3 waterBodyCol = mix(uShallowWaterColor, uDeepWaterColor, smoothstep(0.05, 0.85, vDepth));
+
+          vec2 rel = vWorldPos.xz - uShipPos.xz;
+          float s = sin(-uShipHeading);
+          float c = cos(-uShipHeading);
+          vec2 localRel = vec2(rel.x * c - rel.y * s, rel.x * s + rel.y * c);
+          float wakeFoam = 0.0;
+          if (localRel.y > -6.0 && localRel.y < 38.0) {
+            float trailDist = max(0.0, localRel.y + 6.0);
+            float spread = 0.8 + trailDist * 0.24;
+            float arms = exp(-pow(abs(localRel.x) - spread, 2.0) * 1.4);
+            float centerWash = exp(-pow(localRel.x / (1.2 + trailDist * 0.08), 2.0));
+            float fade = exp(-trailDist * 0.068) * clamp(uShipSpeed / 4.0, 0.15, 1.2);
+            wakeFoam = clamp((arms * 0.65 + centerWash * 0.55) * fade * (0.6 + 0.4 * n2), 0.0, 1.0);
+          }
+
+          float shoreFoam = smoothstep(0.18, 0.02, vDepth) * (0.4 + 0.6 * n1);
+
+          vec3 H = normalize(normalize(uSunDir) + V);
+          float spec = pow(max(dot(N, H), 0.0), 140.0) * 0.65;
+
+          vec3 col = mix(waterBodyCol, reflectionCol, clamp(fresnel * 0.72 + 0.14, 0.0, 0.85));
+          col += uSunColor * spec;
+          col = mix(col, vec3(0.92, 0.97, 0.99), clamp(wakeFoam + shoreFoam * 0.45, 0.0, 0.88));
+
+          float dist = length(cameraPosition - vWorldPos);
+          float fogFactor = 1.0 - exp(-pow(dist * 0.0038, 2.0));
+          col = mix(col, uFogColor, clamp(fogFactor, 0.0, 1.0));
+
+          float alpha = mix(0.76, 0.97, smoothstep(0.0, 0.35, vDepth));
+          gl_FragColor = vec4(col, alpha);
+        }
+      `
+    });
+
+    const fjordWaterMesh = new THREE.Mesh(fjordWaterGeo, fjordWaterMat);
+    fjordWaterMesh.position.y = 0;
+    nbScene.add(fjordWaterMesh);
+
+    const OAR_TRAIL_POOL_SIZE = 80;
+    const oarTrailPool = [];
+    const oarRingGeo = new THREE.RingGeometry(0.14, 0.38, 16);
+    oarRingGeo.rotateX(-Math.PI / 2);
+
+    for (let i = 0; i < OAR_TRAIL_POOL_SIZE; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(oarRingGeo, mat);
+      mesh.visible = false;
+      nbScene.add(mesh);
+      oarTrailPool.push({ mesh, mat, age: 999, maxAge: 2.6 });
+    }
+    let oarTrailIdx = 0;
+
+    function spawnWorldOarContactEffect(worldPos) {
+      const item = oarTrailPool[oarTrailIdx];
+      oarTrailIdx = (oarTrailIdx + 1) % OAR_TRAIL_POOL_SIZE;
+      item.mesh.position.set(worldPos.x, 0.05, worldPos.z);
+      item.mesh.scale.setScalar(0.55);
+      item.mat.opacity = 0.78;
+      item.age = 0;
+      item.mesh.visible = true;
+    }
+
+    // =========================================================================
+    // 9. INTERACTION, POINTER, DRAG-AND-DROP & KEYBOARD HANDLERS
+    // =========================================================================
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+    const waterPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersectPt = new THREE.Vector3();
+
+    let isPointerDown = false;
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+    let lastRippleEmitTime = 0;
+
+    function getWaterIntersection(clientX, clientY, camera) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hit = raycaster.ray.intersectPlane(waterPlane, intersectPt);
+      return hit ? intersectPt.clone() : null;
+    }
+
+    const dragGhost = document.getElementById('drag-ghost');
+    const dragGhostName = document.getElementById('drag-ghost-name');
+    const dragGhostSwatch = document.getElementById('drag-ghost-swatch');
+
+    const swatchStyles = {
+      kohaku: 'linear-gradient(135deg, #ffffff 30%, #ef4444 90%)',
+      showa: 'linear-gradient(135deg, #1e293b 30%, #ef4444 70%, #ffffff 100%)',
+      ogon: 'linear-gradient(135deg, #fef08a 20%, #f59e0b 90%)',
+      platinum: 'linear-gradient(135deg, #ffffff 30%, #94a3b8 95%)'
+    };
+    const varietyNames = {
+      kohaku: 'Kohaku',
+      showa: 'Showa',
+      ogon: 'Golden Ogon',
+      platinum: 'Platinum'
+    };
+
+    let cardPointerStart = null;
+    let activeCardVariety = null;
+    let isDraggingCard = false;
+
+    document.querySelectorAll('.koi-card').forEach((card) => {
+      const variety = card.getAttribute('data-variety');
+
+      card.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        activeCardVariety = variety;
+        cardPointerStart = { x: e.clientX, y: e.clientY };
+        isDraggingCard = false;
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const rx = (Math.random() - 0.5) * 18;
+          const rz = (Math.random() - 0.5) * 10;
+          spawnKoiFish(variety, rx, rz, true);
+        }
+      });
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (activeCardVariety && cardPointerStart) {
+        const dx = e.clientX - cardPointerStart.x;
+        const dy = e.clientY - cardPointerStart.y;
+        if (!isDraggingCard && Math.hypot(dx, dy) > 8) {
+          isDraggingCard = true;
+          dragGhostName.textContent = varietyNames[activeCardVariety] || 'Koi';
+          dragGhostSwatch.style.background = swatchStyles[activeCardVariety];
+          dragGhost.style.display = 'flex';
+        }
+        if (isDraggingCard) {
+          dragGhost.style.left = `${e.clientX}px`;
+          dragGhost.style.top = `${e.clientY}px`;
+          return;
+        }
+      }
+
+      if (!isPointerDown) return;
+
+      if (APP_STATE.activeRealm === 'koi') {
+        const pt = getWaterIntersection(e.clientX, e.clientY, koiCamera);
+        if (!pt) return;
+        const cx = Math.max(-22, Math.min(22, pt.x));
+        const cz = Math.max(-14, Math.min(14, pt.z));
+
+        if (APP_STATE.koi.draggingWhirlpool && APP_STATE.koi.whirlpool) {
+          APP_STATE.koi.whirlpoolCenter.set(cx, cz);
+          vortexIndicator.position.set(cx, 0.04, cz);
+        } else {
+          const now = performance.now();
+          if (now - lastRippleEmitTime > 55) {
+            addWaterRipple(cx, cz, 0.55);
+            audioEngine.playMusicalDroplet();
+            lastRippleEmitTime = now;
+          }
+        }
+      } else if (APP_STATE.activeRealm === 'northbound') {
+        const dx = e.clientX - lastPointerX;
+        const dy = e.clientY - lastPointerY;
+        lastPointerX = e.clientX;
+        lastPointerY = e.clientY;
+        APP_STATE.nb.orbitYaw -= dx * 0.0065;
+        APP_STATE.nb.orbitPitch = Math.max(0.06, Math.min(1.15, APP_STATE.nb.orbitPitch + dy * 0.0055));
+      }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      if (activeCardVariety) {
+        if (isDraggingCard) {
+          dragGhost.style.display = 'none';
+          const pt = getWaterIntersection(e.clientX, e.clientY, koiCamera);
+          const dropX = pt ? Math.max(-20, Math.min(20, pt.x)) : (Math.random() - 0.5) * 14;
+          const dropZ = pt ? Math.max(-12, Math.min(12, pt.z)) : (Math.random() - 0.5) * 8;
+          spawnKoiFish(activeCardVariety, dropX, dropZ, true);
+        } else {
+          const rx = (Math.random() - 0.5) * 18;
+          const rz = (Math.random() - 0.5) * 10;
+          spawnKoiFish(activeCardVariety, rx, rz, true);
+        }
+        activeCardVariety = null;
+        cardPointerStart = null;
+        isDraggingCard = false;
+      }
+      isPointerDown = false;
+      APP_STATE.koi.draggingWhirlpool = false;
+    });
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      isPointerDown = true;
+      lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
+
+      if (APP_STATE.activeRealm === 'koi') {
+        const pt = getWaterIntersection(e.clientX, e.clientY, koiCamera);
+        if (pt) {
+          const cx = Math.max(-22, Math.min(22, pt.x));
+          const cz = Math.max(-14, Math.min(14, pt.z));
+          if (APP_STATE.koi.whirlpool) {
+            const distToVortex = Math.hypot(cx - APP_STATE.koi.whirlpoolCenter.x, cz - APP_STATE.koi.whirlpoolCenter.y);
+            if (distToVortex < 4.2) {
+              APP_STATE.koi.draggingWhirlpool = true;
+              return;
+            }
+          }
+          addWaterRipple(cx, cz, 0.85);
+          audioEngine.playMusicalDroplet();
+        }
+      }
+    });
+
+    const keysPressed = {};
+    window.addEventListener('keydown', (e) => {
+      keysPressed[e.code] = true;
+      if (e.code === 'KeyH') {
+        toggleHideUI();
+      } else if (e.code === 'Escape' && APP_STATE.uiHidden) {
+        toggleHideUI(false);
+      }
+      if (['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code) && APP_STATE.activeRealm === 'northbound') {
+        if (APP_STATE.nb.autoJourney) {
+          setAutoJourney(false);
+        }
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keysPressed[e.code] = false;
+    });
+
+    let touchSteer = 0;
+    const btnTouchLeft = document.getElementById('touch-left');
+    const btnTouchRight = document.getElementById('touch-right');
+    const btnTouchSlower = document.getElementById('touch-slower');
+    const btnTouchFaster = document.getElementById('touch-faster');
+
+    btnTouchLeft.addEventListener('pointerdown', () => { touchSteer = 1; setAutoJourney(false); });
+    btnTouchLeft.addEventListener('pointerup', () => { touchSteer = 0; });
+    btnTouchLeft.addEventListener('pointerleave', () => { touchSteer = 0; });
+
+    btnTouchRight.addEventListener('pointerdown', () => { touchSteer = -1; setAutoJourney(false); });
+    btnTouchRight.addEventListener('pointerup', () => { touchSteer = 0; });
+    btnTouchRight.addEventListener('pointerleave', () => { touchSteer = 0; });
+
+    btnTouchSlower.addEventListener('click', () => {
+      APP_STATE.nb.targetSpeed = Math.max(0, APP_STATE.nb.targetSpeed - 0.8);
+    });
+    btnTouchFaster.addEventListener('click', () => {
+      APP_STATE.nb.targetSpeed = Math.min(7.5, APP_STATE.nb.targetSpeed + 0.8);
+    });
+
+    // =========================================================================
+    // 10. UI BUTTON BINDINGS
+    // =========================================================================
+    const tabKoi = document.getElementById('tab-koi');
+    const tabNorthbound = document.getElementById('tab-northbound');
+    const koiUI = document.getElementById('koi-ui');
+    const nbUI = document.getElementById('northbound-ui');
+    const editorialTitle = document.getElementById('editorial-title');
+    const editorialSubtitle = document.getElementById('editorial-subtitle');
+
+    function switchRealm(realm) {
+      APP_STATE.activeRealm = realm;
+      if (realm === 'koi') {
+        tabKoi.classList.add('active-btn');
+        tabNorthbound.classList.remove('active-btn');
+        koiUI.classList.remove('hidden');
+        nbUI.classList.add('hidden');
+        editorialTitle.textContent = "Innu's Sanctuary.";
+        editorialSubtitle.textContent = "Turquoise Koi Pond · Luminous Butterflies · For Miss Inaya Khan";
+      } else {
+        tabNorthbound.classList.add('active-btn');
+        tabKoi.classList.remove('active-btn');
+        nbUI.classList.remove('hidden');
+        koiUI.classList.add('hidden');
+        editorialTitle.textContent = "Northbound.";
+        updateNorthboundChapterLabel();
+      }
+      audioEngine.updateContinuousMix();
+    }
+
+    tabKoi.addEventListener('click', () => switchRealm('koi'));
+    tabNorthbound.addEventListener('click', () => switchRealm('northbound'));
+
+    const btnSound = document.getElementById('btn-sound');
+    const soundIcon = document.getElementById('sound-icon');
+    const soundLabel = document.getElementById('sound-label');
+
+    btnSound.addEventListener('click', () => {
+      APP_STATE.soundEnabled = !APP_STATE.soundEnabled;
+      btnSound.setAttribute('aria-pressed', String(APP_STATE.soundEnabled));
+      btnSound.classList.toggle('active-btn', APP_STATE.soundEnabled);
+      soundIcon.textContent = APP_STATE.soundEnabled ? '🔊' : '🔇';
+      soundLabel.textContent = APP_STATE.soundEnabled ? 'Sound: On' : 'Sound';
+      audioEngine.setSoundEnabled(APP_STATE.soundEnabled);
+    });
+
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    const topUI = document.getElementById('top-ui');
+    const btnRestoreUI = document.getElementById('btn-restore-ui');
+
+    function toggleHideUI(forceState) {
+      APP_STATE.uiHidden = typeof forceState === 'boolean' ? forceState : !APP_STATE.uiHidden;
+      topUI.classList.toggle('ui-hidden', APP_STATE.uiHidden);
+      koiUI.classList.toggle('ui-hidden', APP_STATE.uiHidden);
+      nbUI.classList.toggle('ui-hidden', APP_STATE.uiHidden);
+      if (APP_STATE.uiHidden) {
+        btnRestoreUI.classList.remove('opacity-0', 'pointer-events-none');
+      } else {
+        btnRestoreUI.classList.add('opacity-0', 'pointer-events-none');
+      }
+    }
+    document.getElementById('btn-hide-ui').addEventListener('click', () => toggleHideUI(true));
+    btnRestoreUI.addEventListener('click', () => toggleHideUI(false));
+
+    const btnRain = document.getElementById('btn-koi-rain');
+    const btnWhirlpool = document.getElementById('btn-koi-whirlpool');
+    const btnCalm = document.getElementById('btn-koi-calm');
+    const btnButterflies = document.getElementById('btn-koi-butterflies');
+    const btnClear = document.getElementById('btn-koi-clear');
+
+    btnRain.addEventListener('click', () => {
+      APP_STATE.koi.rain = !APP_STATE.koi.rain;
+      rainLines.visible = APP_STATE.koi.rain;
+      btnRain.classList.toggle('active-btn', APP_STATE.koi.rain);
+      audioEngine.updateContinuousMix();
+    });
+
+    btnWhirlpool.addEventListener('click', () => {
+      APP_STATE.koi.whirlpool = !APP_STATE.koi.whirlpool;
+      vortexIndicator.visible = APP_STATE.koi.whirlpool;
+      btnWhirlpool.classList.toggle('active-btn', APP_STATE.koi.whirlpool);
+      audioEngine.updateContinuousMix();
+    });
+
+    btnCalm.addEventListener('click', () => {
+      APP_STATE.koi.rain = false;
+      APP_STATE.koi.whirlpool = false;
+      rainLines.visible = false;
+      vortexIndicator.visible = false;
+      btnRain.classList.remove('active-btn');
+      btnWhirlpool.classList.remove('active-btn');
+      for (let i = 0; i < MAX_RIPPLES; i++) rippleData[i].set(999, 999, -100, 0);
+      APP_STATE.koi.fishList.forEach((f) => {
+        f.speed = f.baseSpeed * 0.72;
+      });
+      audioEngine.updateContinuousMix();
+      audioEngine.playMusicalDroplet();
+    });
+
+    btnButterflies.addEventListener('click', () => {
+      APP_STATE.koi.butterflies = !APP_STATE.koi.butterflies;
+      butterflyGroup.visible = APP_STATE.koi.butterflies;
+      btnButterflies.classList.toggle('active-btn', APP_STATE.koi.butterflies);
+    });
+
+    btnClear.addEventListener('click', () => {
+      APP_STATE.koi.fishList.forEach((f) => {
+        koiScene.remove(f.mesh);
+        koiScene.remove(f.mesh.userData.shadowMesh);
+      });
+      APP_STATE.koi.fishList.length = 0;
+      updateKoiCountBadge();
+    });
+
+    const camButtons = {
+      follow: document.getElementById('cam-follow'),
+      orbit: document.getElementById('cam-orbit'),
+      cinematic: document.getElementById('cam-cinematic')
+    };
+    Object.keys(camButtons).forEach((mode) => {
+      camButtons[mode].addEventListener('click', () => {
+        APP_STATE.nb.cameraMode = mode;
+        Object.keys(camButtons).forEach((k) => camButtons[k].classList.toggle('active-btn', k === mode));
+      });
+    });
+
+    const lightButtons = {
+      morning: document.getElementById('light-morning'),
+      overcast: document.getElementById('light-overcast'),
+      moonlight: document.getElementById('light-moonlight')
+    };
+    Object.keys(lightButtons).forEach((preset) => {
+      lightButtons[preset].addEventListener('click', () => {
+        APP_STATE.nb.lightPreset = preset;
+        Object.keys(lightButtons).forEach((k) => lightButtons[k].classList.toggle('active-btn', k === preset));
+      });
+    });
+
+    const btnAutoJourney = document.getElementById('btn-auto-journey');
+    function setAutoJourney(state) {
+      APP_STATE.nb.autoJourney = state;
+      btnAutoJourney.classList.toggle('active-btn', state);
+    }
+    btnAutoJourney.addEventListener('click', () => setAutoJourney(!APP_STATE.nb.autoJourney));
+
+    const btnNbPause = document.getElementById('btn-nb-pause');
+    const nbPauseIcon = document.getElementById('nb-pause-icon');
+    const nbPauseLabel = document.getElementById('nb-pause-label');
+    btnNbPause.addEventListener('click', () => {
+      APP_STATE.nb.paused = !APP_STATE.nb.paused;
+      btnNbPause.classList.toggle('active-btn', APP_STATE.nb.paused);
+      nbPauseIcon.textContent = APP_STATE.nb.paused ? '▶' : '⏸';
+      nbPauseLabel.textContent = APP_STATE.nb.paused ? 'Resume' : 'Pause';
+    });
+
+    document.getElementById('btn-nb-reset').addEventListener('click', () => {
+      APP_STATE.nb.shipPos.set(getFjordCenterX(110), 0, 110);
+      APP_STATE.nb.heading = 0;
+      APP_STATE.nb.speed = 4.2;
+      APP_STATE.nb.targetSpeed = 4.2;
+      setAutoJourney(true);
+      APP_STATE.nb.paused = false;
+      btnNbPause.classList.remove('active-btn');
+      nbPauseIcon.textContent = '⏸';
+      nbPauseLabel.textContent = 'Pause';
+    });
+
+    const inayaModal = document.getElementById('inaya-modal');
+    document.getElementById('btn-inaya-tribute').addEventListener('click', () => {
+      inayaModal.classList.remove('hidden');
+    });
+    document.getElementById('btn-close-inaya-modal').addEventListener('click', () => {
+      inayaModal.classList.add('hidden');
+    });
+    document.getElementById('btn-dismiss-inaya-modal').addEventListener('click', () => {
+      inayaModal.classList.add('hidden');
+    });
+    document.getElementById('btn-send-blessing').addEventListener('click', () => {
+      APP_STATE.peaceLevel = 100;
+      document.getElementById('peace-meter-value').textContent = '100% Rooh Barooh Bliss';
+      document.getElementById('peace-meter-bar').style.width = '100%';
+      audioEngine.playKoiSplash(0.8);
+      if (APP_STATE.activeRealm === 'koi') {
+        spawnKoiFish('ogon', 0, 0, true);
+      }
+    });
+
+    function updateNorthboundChapterLabel() {
+      if (APP_STATE.activeRealm !== 'northbound') return;
+      const z = APP_STATE.nb.shipPos.z;
+      let chapter = "Chapter I · The Sanctuary Cove of Innu & Drakkar Malkin";
+      if (z < 50 && z >= -25) {
+        chapter = "Chapter II · Falls of Rooh Barooh (Soul to Soul)";
+      } else if (z < -25 && z >= -110) {
+        chapter = "Chapter III · Lanterns of Malkin & KMCLU Sentinel Harbor";
+      } else if (z < -110) {
+        chapter = "Chapter IV · Starlight & Aurora of April Fifth (05·04)";
+      }
+      editorialSubtitle.textContent = chapter;
+    }
+
+    // =========================================================================
+    // 11. MAIN ANIMATION & SIMULATION LOOP
+    // =========================================================================
+    let lastFrameTime = performance.now();
+
+    function updateKoiSimulation(dt, elapsed) {
+      pondFloorUniforms.uTime.value = elapsed;
+      koiWaterUniforms.uTime.value = elapsed;
+
+      const targetWhirl = APP_STATE.koi.whirlpool ? 1.0 : 0.0;
+      koiWaterUniforms.uWhirlpoolActive.value += (targetWhirl - koiWaterUniforms.uWhirlpoolActive.value) * Math.min(1, dt * 4);
+      pondFloorUniforms.uWhirlpoolActive.value = koiWaterUniforms.uWhirlpoolActive.value;
+      koiWaterUniforms.uWhirlpoolCenter.value.copy(APP_STATE.koi.whirlpoolCenter);
+      pondFloorUniforms.uWhirlpoolCenter.value.copy(APP_STATE.koi.whirlpoolCenter);
+
+      if (APP_STATE.koi.whirlpool) {
+        vortexIndicator.rotation.y -= dt * 3.2;
+      }
+
+      if (APP_STATE.koi.rain) {
+        const rAttr = rainGeo.attributes.position;
+        for (let i = 0; i < RAIN_COUNT; i++) {
+          let y1 = rAttr.getY(i * 2) - dt * 26;
+          if (y1 < 0) {
+            y1 = 24 + Math.random() * 6;
+            if (Math.random() < 0.08) {
+              addWaterRipple(rAttr.getX(i * 2), rAttr.getZ(i * 2), 0.32);
+            }
+          }
+          rAttr.setY(i * 2, y1);
+          rAttr.setY(i * 2 + 1, y1 - 1.3);
+        }
+        rAttr.needsUpdate = true;
+      }
+
+      for (let i = APP_STATE.koi.droplets.length - 1; i >= 0; i--) {
+        const d = APP_STATE.koi.droplets[i];
+        d.vy -= 12.5 * dt;
+        d.mesh.position.x += d.vx * dt;
+        d.mesh.position.y += d.vy * dt;
+        d.mesh.position.z += d.vz * dt;
+        d.life -= dt;
+        if (d.mesh.position.y <= 0 || d.life <= 0) {
+          koiScene.remove(d.mesh);
+          APP_STATE.koi.droplets.splice(i, 1);
+        }
+      }
+
+      if (APP_STATE.koi.butterflies) {
+        butterflies.forEach((b, idx) => {
+          b.angle += b.speed * dt;
+          b.flapPhase += dt * 14.0;
+          const bx = Math.cos(b.angle + idx) * b.radiusX;
+          const bz = Math.sin(b.angle * 1.3 + idx) * b.radiusZ;
+          const by = 1.35 + Math.sin(elapsed * 2.2 + idx) * 0.45;
+          b.group.position.set(bx, by, bz);
+          b.group.rotation.y = -b.angle + Math.PI * 0.5;
+          const flap = Math.sin(b.flapPhase) * 0.68;
+          b.leftW.rotation.z = flap;
+          b.rightW.rotation.z = -flap;
+        });
+      }
+
+      const fishList = APP_STATE.koi.fishList;
+      for (let i = 0; i < fishList.length; i++) {
+        const f = fishList[i];
+
+        if (f.state === 'falling') {
+          f.vy -= 14.0 * dt;
+          f.y += f.vy * dt;
+          f.mesh.rotation.x = 0.55;
+          if (f.y <= 0.0 && !f.splashed) {
+            f.splashed = true;
+            spawnKoiLandingSplash(f.x, f.z);
+            f.state = 'diving';
+          }
+        } else if (f.state === 'diving') {
+          f.y += (f.targetDepth - f.y) * Math.min(1, dt * 3.8);
+          f.mesh.rotation.x *= Math.pow(0.08, dt);
+          f.x += Math.sin(f.heading) * f.speed * 1.35 * dt;
+          f.z += Math.cos(f.heading) * f.speed * 1.35 * dt;
+          if (Math.abs(f.y - f.targetDepth) < 0.12) {
+            f.state = 'swimming';
+            f.mesh.rotation.x = 0;
+          }
+        } else {
+          f.wanderTimer -= dt;
+          if (f.wanderTimer <= 0) {
+            f.wanderTimer = 2.0 + Math.random() * 3.5;
+            f.targetHeading += (Math.random() - 0.5) * 1.35;
+            f.speed = f.baseSpeed * (0.8 + Math.random() * 0.55);
+          }
+
+          const boundX = 20.5, boundZ = 12.8;
+          if (Math.abs(f.x) > boundX || Math.abs(f.z) > boundZ) {
+            const toCenterAngle = Math.atan2(-f.x, -f.z);
+            f.targetHeading = toCenterAngle;
+          }
+
+          for (let j = 0; j < fishList.length; j++) {
+            if (i === j) continue;
+            const other = fishList[j];
+            const dx = f.x - other.x;
+            const dz = f.z - other.z;
+            const distSq = dx * dx + dz * dz;
+            if (distSq < 4.8 && distSq > 0.001) {
+              const repelAngle = Math.atan2(dx, dz);
+              let diff = repelAngle - f.heading;
+              diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+              f.targetHeading += diff * dt * 2.6;
+            }
+          }
+
+          if (APP_STATE.koi.whirlpool) {
+            const wx = f.x - APP_STATE.koi.whirlpoolCenter.x;
+            const wz = f.z - APP_STATE.koi.whirlpoolCenter.y;
+            const wDist = Math.hypot(wx, wz);
+            if (wDist < 12.0 && wDist > 0.35) {
+              const tangentAngle = Math.atan2(-wz, wx);
+              const pullStrength = (1.0 - wDist / 12.0) * 3.4;
+              f.x += (Math.sin(tangentAngle) * pullStrength - (wx / wDist) * pullStrength * 0.38) * dt;
+              f.z += (Math.cos(tangentAngle) * pullStrength - (wz / wDist) * pullStrength * 0.38) * dt;
+              f.targetHeading = tangentAngle;
+            }
+          }
+
+          let angleDiff = f.targetHeading - f.heading;
+          angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+          f.heading += angleDiff * Math.min(1, dt * 3.2);
+          f.mesh.rotation.z = -angleDiff * 0.25;
+
+          f.x += Math.sin(f.heading) * f.speed * dt;
+          f.z += Math.cos(f.heading) * f.speed * dt;
+        }
+
+        f.swimPhase += dt * (4.5 + f.speed * 1.85);
+        const posAttr = f.mesh.userData.bodyMesh.geometry.attributes.position;
+        const baseArr = f.mesh.userData.bodyMesh.geometry.userData.basePositions;
+        for (let k = 0; k < posAttr.count; k++) {
+          const bx = baseArr[k * 3 + 0];
+          const by = baseArr[k * 3 + 1];
+          const bz = baseArr[k * 3 + 2];
+          const normZ = (bz + 1.3) / 2.6;
+          const wave = Math.sin(f.swimPhase - normZ * 4.2) * (0.04 + normZ * normZ * 0.24);
+          posAttr.setXYZ(k, bx + wave, by, bz);
+        }
+        posAttr.needsUpdate = true;
+
+        f.mesh.userData.tailMesh.position.x = Math.sin(f.swimPhase - 4.2) * 0.24;
+        f.mesh.userData.tailMesh.rotation.y = Math.PI / 2 + Math.sin(f.swimPhase - 4.6) * 0.45;
+        f.mesh.userData.leftPec.rotation.z = Math.sin(f.swimPhase * 0.8) * 0.25;
+        f.mesh.userData.rightPec.rotation.z = -Math.sin(f.swimPhase * 0.8) * 0.25;
+        f.mesh.userData.dorsalFin.rotation.y = Math.sin(f.swimPhase - 2.0) * 0.16;
+
+        f.mesh.position.set(f.x, f.y, f.z);
+        f.mesh.rotation.y = f.heading + Math.PI;
+
+        const sh = f.mesh.userData.shadowMesh;
+        sh.position.set(f.x + 0.35, POND_DEPTH + 0.08, f.z + 0.35);
+        sh.rotation.y = f.heading + Math.PI;
+        sh.visible = (f.y <= 0.2);
+      }
+    }
+
+    const LIGHT_PALETTES = {
+      morning: {
+        skyTop: new THREE.Color(0x2b5876),
+        skyHorizon: new THREE.Color(0xfcd34d),
+        fog: new THREE.Color(0xdbeafe),
+        sunCol: new THREE.Color(0xfffbeb),
+        sunIntensity: 1.48,
+        hemiSky: new THREE.Color(0xfde68a),
+        hemiGround: new THREE.Color(0x1e3a4c),
+        deepWater: new THREE.Color(0x062d38),
+        shallowWater: new THREE.Color(0x147a74),
+        sunDir: new THREE.Vector3(0.45, 0.36, -0.82).normalize(),
+        moonMix: 0.0
+      },
+      overcast: {
+        skyTop: new THREE.Color(0x475569),
+        skyHorizon: new THREE.Color(0x94a3b8),
+        fog: new THREE.Color(0x94a3b8),
+        sunCol: new THREE.Color(0xe2e8f0),
+        sunIntensity: 0.78,
+        hemiSky: new THREE.Color(0xcbd5e1),
+        hemiGround: new THREE.Color(0x1e293b),
+        deepWater: new THREE.Color(0x0f2933),
+        shallowWater: new THREE.Color(0x275256),
+        sunDir: new THREE.Vector3(0.15, 0.75, -0.55).normalize(),
+        moonMix: 0.0
+      },
+      moonlight: {
+        skyTop: new THREE.Color(0x060d1a),
+        skyHorizon: new THREE.Color(0x1b2845),
+        fog: new THREE.Color(0x0f1b2d),
+        sunCol: new THREE.Color(0x93c5fd),
+        sunIntensity: 0.62,
+        hemiSky: new THREE.Color(0x38bdf8),
+        hemiGround: new THREE.Color(0x09131c),
+        deepWater: new THREE.Color(0x03131c),
+        shallowWater: new THREE.Color(0x0b4349),
+        sunDir: new THREE.Vector3(-0.32, 0.48, -0.81).normalize(),
+        moonMix: 1.0
+      }
+    };
+
+    const tempBladeWorldPos = new THREE.Vector3();
+
+    function updateNorthboundSimulation(dt, elapsed) {
+      skyUniforms.uTime.value = elapsed;
+
+      const pal = LIGHT_PALETTES[APP_STATE.nb.lightPreset] || LIGHT_PALETTES.morning;
+      const lerpRate = Math.min(1, dt * 2.2);
+      skyUniforms.uTopColor.value.lerp(pal.skyTop, lerpRate);
+      skyUniforms.uHorizonColor.value.lerp(pal.skyHorizon, lerpRate);
+      skyUniforms.uSunDir.value.lerp(pal.sunDir, lerpRate).normalize();
+      skyUniforms.uMoonlightMix.value += (pal.moonMix - skyUniforms.uMoonlightMix.value) * lerpRate;
+
+      nbScene.fog.color.lerp(pal.fog, lerpRate);
+      nbScene.background.copy(nbScene.fog.color);
+      nbSunLight.color.lerp(pal.sunCol, lerpRate);
+      nbSunLight.intensity += (pal.sunIntensity - nbSunLight.intensity) * lerpRate;
+      nbHemiLight.color.lerp(pal.hemiSky, lerpRate);
+      nbHemiLight.groundColor.lerp(pal.hemiGround, lerpRate);
+
+      fjordWaterUniforms.uSunDir.value.copy(skyUniforms.uSunDir.value);
+      fjordWaterUniforms.uSunColor.value.copy(nbSunLight.color);
+      fjordWaterUniforms.uDeepWaterColor.value.lerp(pal.deepWater, lerpRate);
+      fjordWaterUniforms.uShallowWaterColor.value.lerp(pal.shallowWater, lerpRate);
+      fjordWaterUniforms.uFogColor.value.copy(nbScene.fog.color);
+
+      if (!APP_STATE.nb.paused) {
+        fjordWaterUniforms.uTime.value = elapsed;
+
+        if (keysPressed['KeyW'] || keysPressed['ArrowUp']) {
+          APP_STATE.nb.targetSpeed = Math.min(7.5, APP_STATE.nb.targetSpeed + dt * 2.6);
+        }
+        if (keysPressed['KeyS'] || keysPressed['ArrowDown']) {
+          APP_STATE.nb.targetSpeed = Math.max(0.0, APP_STATE.nb.targetSpeed - dt * 2.6);
+        }
+
+        let steerCmd = touchSteer;
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) steerCmd += 1;
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) steerCmd -= 1;
+
+        if (APP_STATE.nb.autoJourney) {
+          const lookAheadZ = APP_STATE.nb.shipPos.z - 18.0;
+          const targetX = getFjordCenterX(lookAheadZ);
+          const dx = targetX - APP_STATE.nb.shipPos.x;
+          const desiredHeading = Math.atan2(-dx, 18.0);
+          let hDiff = desiredHeading - APP_STATE.nb.heading;
+          hDiff = Math.atan2(Math.sin(hDiff), Math.cos(hDiff));
+          steerCmd = Math.max(-1, Math.min(1, hDiff * 2.4));
+        }
+
+        APP_STATE.nb.steerInput += (steerCmd - APP_STATE.nb.steerInput) * Math.min(1, dt * 5.0);
+        APP_STATE.nb.speed += (APP_STATE.nb.targetSpeed - APP_STATE.nb.speed) * Math.min(1, dt * 3.0);
+
+        APP_STATE.nb.heading += APP_STATE.nb.steerInput * (0.25 + APP_STATE.nb.speed * 0.085) * dt;
+        rudderGroup.rotation.y = -APP_STATE.nb.steerInput * 0.45;
+
+        const forwardX = -Math.sin(APP_STATE.nb.heading);
+        const forwardZ = -Math.cos(APP_STATE.nb.heading);
+        APP_STATE.nb.shipPos.x += forwardX * APP_STATE.nb.speed * dt * 1.9;
+        APP_STATE.nb.shipPos.z += forwardZ * APP_STATE.nb.speed * dt * 1.9;
+
+        if (APP_STATE.nb.shipPos.z < -215) {
+          APP_STATE.nb.shipPos.z = 195;
+          APP_STATE.nb.shipPos.x = getFjordCenterX(195);
+        } else if (APP_STATE.nb.shipPos.z > 215) {
+          APP_STATE.nb.shipPos.z = -195;
+          APP_STATE.nb.shipPos.x = getFjordCenterX(-195);
+        }
+
+        const channelCenter = getFjordCenterX(APP_STATE.nb.shipPos.z);
+        const safeHalfWidth = getFjordChannelHalfWidth(APP_STATE.nb.shipPos.z) * 0.64;
+        const offsetFromCenter = APP_STATE.nb.shipPos.x - channelCenter;
+        if (Math.abs(offsetFromCenter) > safeHalfWidth) {
+          const sign = Math.sign(offsetFromCenter);
+          APP_STATE.nb.shipPos.x = channelCenter + sign * safeHalfWidth;
+          APP_STATE.nb.heading *= Math.pow(0.25, dt);
+        }
+
+        const heave = Math.sin(elapsed * 2.1) * 0.09 + Math.cos(elapsed * 1.45) * 0.05;
+        const pitch = Math.sin(elapsed * 1.85) * 0.025 + (APP_STATE.nb.speed * 0.004);
+        const roll = Math.cos(elapsed * 1.55) * 0.032 - APP_STATE.nb.steerInput * 0.065;
+
+        longship.position.set(APP_STATE.nb.shipPos.x, heave, APP_STATE.nb.shipPos.z);
+        longship.rotation.set(pitch, APP_STATE.nb.heading, roll);
+
+        fjordWaterUniforms.uShipPos.value.copy(longship.position);
+        fjordWaterUniforms.uShipHeading.value = APP_STATE.nb.heading;
+        fjordWaterUniforms.uShipSpeed.value = APP_STATE.nb.speed;
+
+        const sPos = sailGeo.attributes.position;
+        const sBase = sailGeo.userData.basePos;
+        const windBillow = 0.35 + (APP_STATE.nb.speed / 7.5) * 0.55;
+        for (let i = 0; i < sPos.count; i++) {
+          const sx = sBase[i * 3 + 0];
+          const sy = sBase[i * 3 + 1];
+          const u = (sx / 3.1);
+          const v = (sy / 2.7);
+          const curve = (1.0 - u * u * 0.65) * (1.0 - v * v * 0.85);
+          const flutter = Math.sin(elapsed * 4.5 + sx * 1.5 + sy) * 0.04;
+          sPos.setZ(i, -curve * windBillow + flutter);
+        }
+        sPos.needsUpdate = true;
+        sailGeo.computeVertexNormals();
+
+        const prevPhase = APP_STATE.nb.oarPhase;
+        const oarSpeed = 1.6 + APP_STATE.nb.speed * 0.42;
+        APP_STATE.nb.oarPhase = (APP_STATE.nb.oarPhase + dt * oarSpeed) % (Math.PI * 2);
+
+        if (prevPhase < 1.1 && APP_STATE.nb.oarPhase >= 1.1 && APP_STATE.nb.speed > 0.25) {
+          audioEngine.playOarStroke();
+        }
+
+        longship.updateMatrixWorld(true);
+
+        rowers.forEach((r) => {
+          const phase = APP_STATE.nb.oarPhase + r.rowIdx * 0.14;
+          const sweep = Math.cos(phase);
+          const dip = Math.sin(phase);
+
+          r.oarPivot.rotation.y = r.side * sweep * 0.44;
+          r.oarPivot.rotation.z = -r.side * (0.16 + dip * 0.22);
+
+          r.torsoPivot.rotation.x = -sweep * 0.28;
+          r.armGroup.position.z = sweep * 0.11;
+
+          r.bladeContactNode.getWorldPosition(tempBladeWorldPos);
+          const waterSurfaceY = 0.08;
+          if (tempBladeWorldPos.y <= waterSurfaceY && dip > 0.05 && APP_STATE.nb.speed > 0.15) {
+            if (elapsed - r.lastTrailTime > 0.11) {
+              spawnWorldOarContactEffect(tempBladeWorldPos);
+              r.lastTrailTime = elapsed;
+            }
+          }
+        });
+
+        for (let i = 0; i < OAR_TRAIL_POOL_SIZE; i++) {
+          const item = oarTrailPool[i];
+          if (!item.mesh.visible) continue;
+          item.age += dt;
+          if (item.age >= item.maxAge) {
+            item.mesh.visible = false;
+          } else {
+            const p = item.age / item.maxAge;
+            item.mesh.scale.setScalar(0.55 + p * 2.4);
+            item.mat.opacity = (1.0 - p) * 0.65;
+          }
+        }
+
+        waterfalls.forEach((wf, idx) => {
+          wf.mistMesh.scale.x = 1.5 + Math.sin(elapsed * 2.2 + idx) * 0.25;
+          wf.mistMesh.scale.z = 1.5 + Math.cos(elapsed * 1.9 + idx) * 0.25;
+        });
+        audioEngine.maybePlayFjordBird();
+
+        const speedTxt = `${APP_STATE.nb.speed.toFixed(1)} knots`;
+        document.getElementById('nb-speed-label').textContent = speedTxt;
+        document.getElementById('mobile-speed-readout').textContent = `${APP_STATE.nb.speed.toFixed(1)} kn`;
+        updateNorthboundChapterLabel();
+      }
+
+      const shipWorldPos = longship.position;
+      if (APP_STATE.nb.cameraMode === 'follow') {
+        const camDist = 20.5;
+        const camHeight = 6.2;
+        const angle = APP_STATE.nb.heading + (APP_STATE.nb.orbitYaw - 0.35) * 0.65;
+        const targetCamX = shipWorldPos.x + Math.sin(angle) * camDist;
+        const targetCamZ = shipWorldPos.z + Math.cos(angle) * camDist;
+        nbCamera.position.lerp(new THREE.Vector3(targetCamX, camHeight, targetCamZ), Math.min(1, dt * 4.5));
+        nbCamera.lookAt(shipWorldPos.x, shipWorldPos.y + 2.4, shipWorldPos.z - 2.0);
+      } else if (APP_STATE.nb.cameraMode === 'orbit') {
+        const r = APP_STATE.nb.orbitDist;
+        const yaw = APP_STATE.nb.orbitYaw + APP_STATE.nb.heading;
+        const pitch = APP_STATE.nb.orbitPitch;
+        const cx = shipWorldPos.x + Math.sin(yaw) * Math.cos(pitch) * r;
+        const cy = Math.max(1.2, shipWorldPos.y + Math.sin(pitch) * r);
+        const cz = shipWorldPos.z + Math.cos(yaw) * Math.cos(pitch) * r;
+        nbCamera.position.set(cx, cy, cz);
+        nbCamera.lookAt(shipWorldPos.x, shipWorldPos.y + 2.0, shipWorldPos.z);
+      } else {
+        APP_STATE.nb.cinematicTimer += dt;
+        if (APP_STATE.nb.cinematicTimer > 9.0) {
+          APP_STATE.nb.cinematicTimer = 0;
+          APP_STATE.nb.cinematicIndex = (APP_STATE.nb.cinematicIndex + 1) % 3;
+        }
+        const idx = APP_STATE.nb.cinematicIndex;
+        if (idx === 0) {
+          const a = APP_STATE.nb.heading + 0.55;
+          nbCamera.position.set(
+            shipWorldPos.x - Math.sin(a) * 12.5,
+            1.65,
+            shipWorldPos.z - Math.cos(a) * 12.5
+          );
+          nbCamera.lookAt(shipWorldPos.x, 1.8, shipWorldPos.z);
+        } else if (idx === 1) {
+          const a = APP_STATE.nb.heading - 0.85;
+          nbCamera.position.set(
+            shipWorldPos.x + Math.sin(a) * 32.0,
+            14.5,
+            shipWorldPos.z + Math.cos(a) * 32.0
+          );
+          nbCamera.lookAt(shipWorldPos.x, 3.2, shipWorldPos.z - 4.0);
+        } else {
+          const a = APP_STATE.nb.heading + 1.35;
+          nbCamera.position.set(
+            shipWorldPos.x + Math.sin(a) * 9.2,
+            2.8,
+            shipWorldPos.z + Math.cos(a) * 9.2
+          );
+          nbCamera.lookAt(shipWorldPos.x, 3.4, shipWorldPos.z);
+        }
+      }
+
+      skyMesh.position.copy(shipWorldPos);
+      nbSunLight.target.position.copy(shipWorldPos);
+      nbSunLight.target.updateMatrixWorld();
+      nbSunLight.position.copy(shipWorldPos).addScaledVector(skyUniforms.uSunDir.value, 140);
+
+      fjordWaterMesh.visible = false;
+      reflectionCamera.copy(nbCamera);
+      reflectionCamera.position.y = -nbCamera.position.y;
+      reflectionCamera.rotation.x = -nbCamera.rotation.x;
+      reflectionCamera.rotation.z = -nbCamera.rotation.z;
+      renderer.setRenderTarget(reflectionRT);
+      renderer.render(nbScene, reflectionCamera);
+      renderer.setRenderTarget(null);
+      fjordWaterMesh.visible = true;
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, (now - lastFrameTime) * 0.001);
+      lastFrameTime = now;
+      const elapsed = now * 0.001;
+
+      if (APP_STATE.activeRealm === 'koi') {
+        updateKoiSimulation(dt, elapsed);
+        renderer.render(koiScene, koiCamera);
+      } else {
+        updateNorthboundSimulation(dt, elapsed);
+        renderer.render(nbScene, nbCamera);
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      renderer.setSize(w, h);
+      koiCamera.aspect = w / h;
+      koiCamera.updateProjectionMatrix();
+      nbCamera.aspect = w / h;
+      nbCamera.updateProjectionMatrix();
+    });
+
+    window.addEventListener('load', () => {
+      requestAnimationFrame(animate);
+    });
+  })();
+  </script>
+</body>
+</html>
